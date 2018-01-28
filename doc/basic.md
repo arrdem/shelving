@@ -1,8 +1,9 @@
 # Basic API
 
-The various shelving implementations define their own mechanisms for
-constructing configurations. These operations should be shared by all
-implementations.
+[back to the index](/README.md#usage)
+
+The various shelving implementations define their own mechanisms for constructing
+configurations. These operations should be shared by all implementations.
 
 ## shelving.core/open
 - `(open config)`
@@ -17,16 +18,14 @@ Good 'ol `fsync(2)`. Flushes the shelf but doesn't close it.
 ## shelving.core/close
 - `(close conn)`
 
-Closes an open shelf. No attempt is made to define the effect of
-closing a shelf twice.
+Closes an open shelf. No attempt is made to define the effect of closing a shelf twice.
 
 ## shelving.core/put
 - `(put conn spec val)`
 - `(put conn spec uuid val)`
 
-Writes a val to the shelf. The spec must name a spec which is legal in
-the shelf's schema, and which val conforms to. If no UUID is provided,
-then the table's ID generation strategy is used.
+Writes a val to the shelf. The spec must name a spec which is legal in the shelf's schema, and which
+val conforms to. If no UUID is provided, then the table's ID generation strategy is used.
 
 ## shelving.core/get
 - `(put conn spec uuid)`
@@ -39,5 +38,4 @@ Fetches a record from the shelf by spec and UUID.
 
 Without a spec, returns a sequence all the specs in the shelf.
 
-With a spec, returns a sequence of the IDs of the records of that spec
-in the shelf.
+With a spec, returns a sequence of the IDs of the records of that spec in the shelf.
