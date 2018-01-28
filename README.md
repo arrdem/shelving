@@ -52,6 +52,7 @@ expressions and arbitrary predicates make this difficult.
   - [shelving.core/extend-schema](doc/schema.md#shelvingcoreextend-schema)
 - [UUID helpers](doc/helpers.md#uuid-helpers)
   - [shelving.core/random-uuid](doc/helpers.md#shelvingcorerandom-uuid)
+- [Grimoire v3 case study](src/dev/clj/grimoire.clj)
 
 Shelving includes a "trivial" back end, which provides most of the
 same behavior as simpledb, along with the same trade-offs of always
