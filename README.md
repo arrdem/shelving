@@ -34,19 +34,19 @@ the spec structure of stored data. Unfortunately some spec features such as mult
 expressions and arbitrary predicates make this difficult.
 
 ## Usage
-- [Basic API](doc/basic.md)
-  - [shelving.core/open](doc/basic.md#shelvingcoreopen)
-  - [shelving.core/flush](doc/basic.md#shelvingcoreflush)
-  - [shelving.core/close](doc/basic.md#shelvingcoreclose)
-  - [shelving.core/put](doc/basic.md#shelvingcoreput)
-  - [shelving.core/get](doc/basic.md#shelvingcoreget)
-- [Schema API](doc/schema.md#schema-api)
-  - [shelving.core/empty-schema](doc/schema.md#shelvingcoreemptyschema)
-  - [shelving.core/extend-schema](doc/schema.md#shelvingcoreextend-schema)
-- [UUID helpers](doc/helpers.md#uuid-helpers)
-  - [shelving.core/random-uuid](doc/helpers.md#shelvingcorerandom-uuid)
+- [Basic API](/doc/basic.md)
+  - [shelving.core/open](/doc/basic.md#shelvingcoreopen)
+  - [shelving.core/flush](/doc/basic.md#shelvingcoreflush)
+  - [shelving.core/close](/doc/basic.md#shelvingcoreclose)
+  - [shelving.core/put](/doc/basic.md#shelvingcoreput)
+  - [shelving.core/get](/doc/basic.md#shelvingcoreget)
+- [Schema API](/doc/schema.md#schema-api)
+  - [shelving.core/empty-schema](/doc/schema.md#shelvingcoreemptyschema)
+  - [shelving.core/extend-schema](/doc/schema.md#shelvingcoreextend-schema)
+- [UUID helpers](/doc/helpers.md#uuid-helpers)
+  - [shelving.core/random-uuid](/doc/helpers.md#shelvingcorerandom-uuid)
 
-See also the [Grimoire v3 case study](src/dev/clj/grimoire.clj) which motivates much of this work.
+See also the [Grimoire v3 case study](/src/dev/clj/grimoire.clj) which motivates much of this work.
 
 Shelving includes a "trivial" back end, which provides most of the same behavior as simpledb, along
 with the same trade-offs of always keeping everything in memory and using EDN for
