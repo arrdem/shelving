@@ -160,7 +160,7 @@
 
 (comment
   (def *conn
-    (-> (ts/->TrivialEdnShelf grimoire-schema "grim.edn")
+    (-> (ts/->TrivialEdnShelf grimoire-schema "target/grim.edn")
         (shelving/open)))
 
   (shelving/put *conn ::package (->mvn-pkg "org.clojure" "clojure" "1.6.0"))
