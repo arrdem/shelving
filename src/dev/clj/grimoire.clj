@@ -152,11 +152,11 @@
 
 (def schema
   (-> shelving/empty-schema
-      (shelving/extend-schema ::package ->id)
+      (shelving/shelf-spec ::package ->id)
 
-      (shelving/extend-schema ::entity ->id)
+      (shelving/shelf-spec ::entity ->id)
 
-      (shelving/extend-schema ::annotation ->id)))
+      (shelving/shelf-spec ::annotation ->id)))
 
 (comment
   (def *conn

@@ -17,7 +17,7 @@
   (let [foo-gen (s/gen ::foo)
         schema  (-> sh/empty-schema
                     ;; Using content hashing for ID generation
-                    (sh/extend-schema ::foo sh/texts->sha-uuid))
+                    (sh/shelf-spec ::foo sh/texts->sha-uuid))
         cfg     (->cfg schema)
         conn    (sh/open cfg)
         _       (t/is (= (sh/enumerate conn) '(::foo)))

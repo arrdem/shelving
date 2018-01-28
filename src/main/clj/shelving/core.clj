@@ -110,7 +110,7 @@
   {:type  ::schema
    :specs {}})
 
-(defn extend-schema
+(defn shelf-spec
   "Enters a spec type into a schema, returning a new schema.
 
   Data to be persisted must have a \"primary key\", being an element
@@ -121,7 +121,7 @@
          (ifn? id-fn)]}
   (when (not-empty opts)
     (binding [*out* *err*]
-      (println "Warning: extend-schema got ignored opts" opts)))
+      (println "Warning: shelf-schema got ignored opts" opts)))
   (assoc-in schema [:specs spec]
             {:type  ::spec
              :id-fn id-fn}))

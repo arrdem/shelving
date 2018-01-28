@@ -14,11 +14,14 @@ There's already plenty of prior art in the Clojure ecosystem for in-memory
 databases. [datascript](https://github.com/tonsky/datascript) and
 [pldb](https://github.com/clojure/core.logic/wiki/Features) pop to mind, among others. These tools
 optimize for database-like query access over in-memory structures and don't provide concrete
-serialization stories. [simpledb](https://github.com/ibdknox/simpledb) provided a trivial
-persistence model but had no features for data validation or building multiple storage layers.
+serialization stories.
 
-Shelving is a tool set for implementing quick-and-dirty yet more general storage layers for
-structured using [clojure.spec(.alpha)](https://github.com/clojure/spec.alpha) for data validation.
+For small applications or applications which want to distribute data as resources, traditional
+databases which require a central available server are a poor fit.
+
+Shelving is a tool set for trying to implement quick-and-dirty storage layers for your existing
+[spec](https://github.com/clojure/spec.alpha)'d data while retaining some of the query niceties that
+make ORMs and real databases compelling.
 
 ### Caveats
 
@@ -42,7 +45,7 @@ expressions and arbitrary predicates make this difficult.
   - [shelving.core/get](/doc/basic.md#shelvingcoreget)
 - [Schema API](/doc/schema.md#schema-api)
   - [shelving.core/empty-schema](/doc/schema.md#shelvingcoreemptyschema)
-  - [shelving.core/extend-schema](/doc/schema.md#shelvingcoreextend-schema)
+  - [shelving.core/shelf-spec](/doc/schema.md#shelvingcoreshelf-spec)
 - [UUID helpers](/doc/helpers.md#uuid-helpers)
   - [shelving.core/random-uuid](/doc/helpers.md#shelvingcorerandom-uuid)
 
@@ -61,8 +64,8 @@ user> (s/def ::foo string?)
 :user/foo
 user> (def schema
         (-> sh/empty-schema
-            ;; Using content hashing for ID generation
-            (sh/extend-schema ::foo sh/texts->sha-uuid)))
+            ;; Add a hew spec to the schema sing content hashing for ID generation
+            (sh/shelf-spec ::foo sh/texts->sha-uuid)))
 #'user/schema
 user> (require '[shelving.trivial-edn :refer [->TrivialEdnShelf]])
 nil
