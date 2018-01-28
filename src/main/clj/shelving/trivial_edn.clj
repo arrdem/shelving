@@ -51,7 +51,7 @@
 ;; EDN shelves don't have write batching and don't have to be closed.
 (defmethod sh/flush ::shelf [{:keys [shelving.trivial-edn/state path]}]
   (let [file (io/file path)]
-    (if-let [parent (.getParent file)]
+    (if-let [parent (.getParentFile file)]
       (.mkdirs parent))
     (with-open [writer (io/writer file)]
       (binding [*out*                               writer
@@ -60,7 +60,7 @@
         (pr @state)))))
 
 (defmethod sh/close ::shelf [s]
-  (flush s))
+  (sh/flush s))
 
 (defmethod sh/get ::shelf [{:keys [shelving.trivial-edn/state]} spec record-id]
   (-> @state (get :store) (get spec) (get record-id)))

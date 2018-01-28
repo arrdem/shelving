@@ -8,10 +8,11 @@
 
   :source-paths   ["src/main/clj"
                    "src/main/cljc"]
+  :test-paths     ["src/test/clj"
+                   "src/test/cljc"]
+
   :resource-paths ["src/main/resources"]
-  :profiles {:dev  {:source-paths   ["src/dev/clj"
-                                     "src/dev/clj"]
-                    :resource-paths ["src/dev/resources"]}
-             :test {:source-paths   ["src/test/clj"
-                                     "src/test/cljc"]
-                    :resource-paths ["src/test/resources"]}})
+  :profiles {:dev {:dependencies   [[org.clojure/test.check "0.10.0-alpha2"]]
+                   :source-paths   ["src/dev/clj"
+                                    "src/dev/clj"]
+                   :resource-paths ["src/dev/resources"]}})
