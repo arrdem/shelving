@@ -84,6 +84,8 @@ user> (sh/enumerate *conn)
 (:user/foo)
 user> (sh/enumerate *conn ::foo)
 (#uuid "33a65680-b734-fec6-bd92-1cb7df6caacf" #uuid "d47453e5-4611-a98e-03cb-d151e644a286")
+user> (map (partial sh/get *conn ::foo) (sh/enumerate *conn ::foo))
+("my first write" "another write")
 user> 
 ```
 
