@@ -1,5 +1,5 @@
 (defproject me.arrdem/shelving "_"
-  :description "A toolkit for rapidly defining hierarchical data stores."
+  :description "A toolkit for building data stores."
   :url "https://github.com/arrdem/shelving"
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
