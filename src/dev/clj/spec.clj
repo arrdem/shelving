@@ -4,10 +4,8 @@
 
 (defn keys-as-map [keys-form]
   (let [[_keys & {:keys [req req-un opt opt-un] :as opts}] keys-form]
-    (->> (concat (map (juxt #(keyword (name %)) identity) req-un)
-                 (map (juxt #(keyword (name %)) identity) opt-un)
-                 (map (juxt identity identity) req)
-                 (map (juxt identity identity) opt))
+    (->> (concat (map (juxt #(keyword (name %)) identity) (concat req-un opt-un))
+                 (map (juxt identity identity) (concat req opt)))
          (into {}))))
 
 (defn postwalk-with-spec [spec obj f]
