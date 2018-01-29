@@ -1,5 +1,5 @@
 # Shelving (née Tupelov)
-<img align="right" src="https://github.com/arrdem/shelving/raw/master/etc/shelving.jpg" width=300/>
+<img align="right" src="./etc/shelving.jpg" width=300/>
 
 > Shelving; Noun;
 >
