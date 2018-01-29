@@ -31,7 +31,7 @@
    :version version})
 
 (defmethod ->id :org.maven/package [{:keys [group artifact version]}]
-  (shelving/texts->uuid group artifact version))
+  (shelving/texts->sha-uuid group artifact version))
 
 (defmethod package->spec :org.maven/package [_]
   :org.maven/package)
@@ -75,7 +75,7 @@
   package)
 
 (defmethod ->id :org.clojure/namespace [{:keys [package platform name]}]
-  (shelving/texts->uuid (.toString (->id package)) platform name))
+  (shelving/texts->sha-uuid (.toString (->id package)) platform name))
 
 (s/def :org.clojure.def/type
   #{:org.clojure/def})
@@ -95,7 +95,7 @@
   namespace)
 
 (defmethod ->id :org.clojure/def [{:keys [name namespace]}]
-  (shelving/texts->uuid (.toString (->id namespace)) name))
+  (shelving/texts->sha-uuid (.toString (->id namespace)) name))
 
 ;; Annotations on entities.
 ;;--------------------------------------------------------------------------------------------------
