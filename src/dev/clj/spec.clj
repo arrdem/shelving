@@ -12,7 +12,7 @@
 
 (defn postwalk-with-spec [spec obj f]
   (f spec
-     (if-let [spec* (some-> spec s/get-spec s/describe*)]
+     (let [spec* (some-> spec s/get-spec s/describe*)]
        (match [spec*]
          [([`s/multi-spec mm k] :seq)]
          (postwalk-with-spec ((find-var mm) obj) obj f)
@@ -30,5 +30,4 @@
                   [k v'])
                 (into {})))
 
-         :else obj)
-       obj)))
+         :else obj))))
