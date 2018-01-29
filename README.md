@@ -1,5 +1,5 @@
 # Shelving (née Tupelov)
-<img align="right" src="https://github.com/arrdem/shelving/raw/master/etc/shelving.jpg" width=300/>
+<img align="right" src="./etc/shelving.jpg" width=300/>
 
 > Shelving; Noun;
 >
@@ -37,19 +37,19 @@ the spec structure of stored data. Unfortunately some spec features such as mult
 expressions and arbitrary predicates make this difficult.
 
 ## Usage
-- [Basic API](/doc/basic.md)
-  - [shelving.core/open](/doc/basic.md#shelvingcoreopen)
-  - [shelving.core/flush](/doc/basic.md#shelvingcoreflush)
-  - [shelving.core/close](/doc/basic.md#shelvingcoreclose)
-  - [shelving.core/put](/doc/basic.md#shelvingcoreput)
-  - [shelving.core/get](/doc/basic.md#shelvingcoreget)
-  - [shelving.core/enumerate-specs](/doc/basic.md#shelvingcoreenumerate-specs)
-  - [shelving.core/enumerate-records](/doc/basic.md#shelvingcoreenumerate-records)
-- [Shelf Spec API](/doc/schema.md#schema-api)
-  - [shelving.core/empty-schema](/doc/schema.md#shelvingcoreemptyschema)
-  - [shelving.core/shelf-spec](/doc/schema.md#shelvingcoreshelf-spec)
-- [UUID helpers](/doc/helpers.md#uuid-helpers)
-  - [shelving.core/random-uuid](/doc/helpers.md#shelvingcorerandom-uuid)
+- [Basic API](/docs/basic.md)
+  - [shelving.core/open](/docs/basic.md#shelvingcoreopen)
+  - [shelving.core/flush](/docs/basic.md#shelvingcoreflush)
+  - [shelving.core/close](/docs/basic.md#shelvingcoreclose)
+  - [shelving.core/put](/docs/basic.md#shelvingcoreput)
+  - [shelving.core/get](/docs/basic.md#shelvingcoreget)
+  - [shelving.core/enumerate-specs](/docs/basic.md#shelvingcoreenumerate-specs)
+  - [shelving.core/enumerate-records](/docs/basic.md#shelvingcoreenumerate-records)
+- [Shelf Spec API](/docs/schema.md#schema-api)
+  - [shelving.core/empty-schema](/docs/schema.md#shelvingcoreemptyschema)
+  - [shelving.core/shelf-spec](/docs/schema.md#shelvingcoreshelf-spec)
+- [UUID helpers](/docs/helpers.md#uuid-helpers)
+  - [shelving.core/random-uuid](/docs/helpers.md#shelvingcorerandom-uuid)
 
 See also the [Grimoire v3 case study](/src/dev/clj/grimoire.clj) which motivates much of this work.
 
