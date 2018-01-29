@@ -11,16 +11,16 @@
          (into {}))))
 
 (defn postwalk-with-spec [spec obj f]
-  (if-let [spec* (some-> spec s/get-spec s/describe*)]
-    (match [spec*]
-      [([`s/multi-spec mm k] :seq)]
-      (f spec (postwalk-with-spec ((find-var mm) obj) obj f))
-      
-      [(s :guard keyword?)]
-      (f spec (postwalk-with-spec s obj f))
-      
-      [([`s/keys & args] :seq)]
-      (f spec
+  (f spec
+     (if-let [spec* (some-> spec s/get-spec s/describe*)]
+       (match [spec*]
+         [([`s/multi-spec mm k] :seq)]
+         (postwalk-with-spec ((find-var mm) obj) obj f)
+
+         [(s :guard keyword?)]
+         (postwalk-with-spec s obj f)
+
+         [([`s/keys & args] :seq)]
          (let [spec-map (keys-as-map spec*)]
            (->> (for [[k v] obj
                       :let [spec (get spec-map k)]
@@ -28,8 +28,7 @@
                       :let [v' (postwalk-with-spec spec v f)]
                       :when v']
                   [k v'])
-                (into {}))))
+                (into {})))
 
-      :else
-      (f spec obj))
-    (f spec obj)))
+         :else obj)
+       obj)))
