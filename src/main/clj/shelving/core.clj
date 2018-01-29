@@ -47,7 +47,8 @@
   ([{:keys [type]} _] type)
   ([{:keys [type]} _ _] type)
   ([{:keys [type]} _ _ _] type)
-  ([{:keys [type]} _ _ _ _] type))
+  ([{:keys [type]} _ _ _ _] type)
+  ([{:keys [type]} _ _ _ _ _] type))
 
 (defmulti get
   "Fetches a record from a shelf by its spec and ID.
