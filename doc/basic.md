@@ -32,10 +32,12 @@ val conforms to. If no UUID is provided, then the table's ID generation strategy
 
 Fetches a record from the shelf by spec and UUID.
 
-## shelving.core/enumerate
-- `(enumerate conn)`
-- `(enumerate conn spec)`
+## shelving.core/enumerate-specs
+- `(enumerate-specs conn)`
 
-Without a spec, returns a sequence all the specs in the shelf.
+Returns a sequence all the specs in the shelf.
 
-With a spec, returns a sequence of the IDs of the records of that spec in the shelf.
+## shelving.core/enumerate-records
+- `(enumerate-records conn spec)`
+
+Returns a sequence of the UUIDs of the records of that spec in the shelf.

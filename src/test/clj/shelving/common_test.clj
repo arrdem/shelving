@@ -20,7 +20,7 @@
                     (sh/shelf-spec ::foo sh/texts->sha-uuid))
         cfg     (->cfg schema)
         conn    (sh/open cfg)
-        _       (t/is (= (sh/enumerate conn) '(::foo)))
+        _       (t/is (= (sh/enumerate-specs conn) '(::foo)))
 
         v1 (sgen/generate foo-gen)
         r1 (sh/put conn ::foo v1)
@@ -28,7 +28,7 @@
 
         v2 (sgen/generate foo-gen)
         r2 (sh/put conn ::foo v2)
-        _  (t/is (= (sh/enumerate conn ::foo) (list r1 r2)))
+        _  (t/is (= (sh/enumerate-records conn ::foo) (list r1 r2)))
 
         v3 (sgen/generate foo-gen)
         _  (sh/put conn ::foo r1 v3)
@@ -37,7 +37,7 @@
         ;; Test round-tripping
         _    (sh/close conn)
         conn (sh/open cfg)
-        _    (t/is (= (sh/enumerate conn) '(::foo)))
-        _    (t/is (= (sh/enumerate conn ::foo) (list r1 r2)))
+        _    (t/is (= (sh/enumerate-specs conn) '(::foo)))
+        _    (t/is (= (sh/enumerate-records conn ::foo) (list r1 r2)))
         _    (t/is (= v2 (sh/get conn ::foo r2)))
         _    (t/is (= v3 (sh/get conn ::foo r1)))]))

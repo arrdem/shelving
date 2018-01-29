@@ -15,7 +15,8 @@
   (:refer-clojure :exclude [flush get]) 
   (:import [java.util UUID]
            [java.security MessageDigest]
-           [java.nio ByteBuffer]))
+           [java.nio ByteBuffer])
+  (:require [clojure.spec.alpha :as s]))
 
 ;; Intentional interface for shelves
 ;;--------------------------------------------------------------------------------------------------
@@ -66,12 +67,18 @@
                [conn spec record-id record])}
   #'dx)
 
-(defmulti enumerate
-  "Enumerates all the known specs, or the elements of a spec as UUIDs.
+(defmulti enumerate-specs
+  "Enumerates all the known specs.
 
   Shelves must implement this method."
-  {:arglists '([conn]
-               [conn spec])}
+  {:arglists '([conn])}
+  #'dx)
+
+(defmulti enumerate-records
+  "Enumerates all the known records of a spec by UUID.
+
+  Shelves must implement this method."
+  {:arglists '([conn spec])}
   #'dx)
 
 ;; ID tools

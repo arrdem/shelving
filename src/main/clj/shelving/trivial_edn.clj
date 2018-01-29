@@ -34,8 +34,9 @@
       (swap! state assoc :schema (sh/schema->specs schema)))
 
     ;; Validate any loaded data
-    (doseq [[spec records] (-> state deref :store)
-            [id record]    records]
+    (doseq [spec (sh/enumerate-specs conn)
+            id   (sh/enumerate-records conn spec)
+            :let [record (sh/get conn spec id)]]
       (if-not (s/valid? spec record)
         (throw (ex-info "Failed to validate record!"
                         {:spec        spec
@@ -63,7 +64,7 @@
   (sh/flush s))
 
 (defmethod sh/get ::shelf [{:keys [shelving.trivial-edn/state]} spec record-id]
-  (-> @state (get :store) (get spec) (get record-id)))
+  (-> @state (get :records) (get spec) (get record-id)))
 
 (defmethod sh/put ::shelf
   ([{:keys [schema] :as conn} spec record]1
@@ -74,16 +75,16 @@
       (assert (uuid? record-id))
       (assert (sh/has-spec? schema spec))
       (assert (s/valid? spec record))
-      (swap! state assoc-in [:store spec record-id] record)))
+      (swap! state assoc-in [:records spec record-id] record)))
    (when flush-after-write
      (flush state))
    record-id))
 
-(defmethod sh/enumerate ::shelf
-  ([{:keys [schema shelving.trivial-edn/state]}]
-   (-> @state (get :schema) seq))
-  ([{:keys [schema shelving.trivial-edn/state]} spec]
-   (-> @state (get :store) (get spec) keys)))
+(defmethod sh/enumerate-specs ::shelf [{:keys [schema shelving.trivial-edn/state]}]
+  (-> @state (get :schema) seq))
+
+(defmethod sh/enumerate-records ::shelf [{:keys [schema shelving.trivial-edn/state]} spec]
+  (-> @state (get :records) (get spec) keys))
 
 (defn ->TrivialEdnShelf
   "Configures a (trivial) EDN shelf which can be opened for reading and writing."
