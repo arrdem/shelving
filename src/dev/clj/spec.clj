@@ -14,23 +14,22 @@
   (if-let [spec* (some-> spec s/get-spec s/describe*)]
     (match [spec*]
       [([`s/multi-spec mm k] :seq)]
-      (recur ((find-var mm) obj) obj f)
+      (f spec (postwalk-with-spec ((find-var mm) obj) obj f))
       
       [(s :guard keyword?)]
-      (recur s obj f)
+      (f spec (postwalk-with-spec s obj f))
       
-      :else
+      [([`s/keys & args] :seq)]
       (f spec
-         (match [spec*]
-           [([`s/keys & args] :seq)]
-           (let [spec-map (keys-as-map spec*)]
-             (->> (for [[k v] obj
-                        :let [spec (get spec-map k)]
-                        :when spec
-                        :let [v' (postwalk-with-spec spec v f)]
-                        :when v']
-                    [k v'])
-                  (into {})))
+         (let [spec-map (keys-as-map spec*)]
+           (->> (for [[k v] obj
+                      :let [spec (get spec-map k)]
+                      :when spec
+                      :let [v' (postwalk-with-spec spec v f)]
+                      :when v']
+                  [k v'])
+                (into {}))))
 
-           :else obj)))
-    [spec obj]))
+      :else
+      (f spec obj))
+    (f spec obj)))
