@@ -5,39 +5,44 @@
 The various shelving implementations define their own mechanisms for constructing
 configurations. These operations should be shared by all implementations.
 
-## shelving.core/open
-- `(open config)`
+## shelving.core/put
+ - `(put conn spec val)`
+ - `(put conn spec id val)`
 
-Opens a configuration, producing a readable and writable shelf.
+Enters a record into a shelf according to its spec in the schema, inserting substructures and updating all relevant rel(ation)s.
+
+For shelves storing "records" not "values", the `id` parameter may be used to either control the ID of the record, say for achieving an upsert.
+
+It is an error to specify the ID when inserting into a "value" shelf.
+
+Shelves must implement this method.
+
+## shelving.core/open
+ - `(open config)`
+
+Opens a shelf for reading or writing.
+
+Shelves must implement this method.
 
 ## shelving.core/flush
-- `(flush conn)`
+ - `(flush conn)`
 
-Good 'ol `fsync(2)`. Flushes the shelf but doesn't close it.
+Flushes (commits) an open shelf.
 
-## shelving.core/close
-- `(close conn)`
-
-Closes an open shelf. No attempt is made to define the effect of closing a shelf twice.
-
-## shelving.core/put
-- `(put conn spec val)`
-- `(put conn spec uuid val)`
-
-Writes a val to the shelf. The spec must name a spec which is legal in the shelf's schema, and which
-val conforms to. If no UUID is provided, then the table's ID generation strategy is used.
+Shelves must implement this method.
 
 ## shelving.core/get
-- `(put conn spec uuid)`
+ - `(get conn spec record-id)`
 
-Fetches a record from the shelf by spec and UUID.
+Fetches a record from a shelf by its spec and ID.
 
-## shelving.core/enumerate-specs
-- `(enumerate-specs conn)`
+Shelves must implement this method.
 
-Returns a sequence all the specs in the shelf.
+## shelving.core/close
+ - `(close conn)`
 
-## shelving.core/enumerate-records
-- `(enumerate-records conn spec)`
+Closes an open shelf.
 
-Returns a sequence of the UUIDs of the records of that spec in the shelf.
+Shelves may implement this method.
+
+By default just flushes.
