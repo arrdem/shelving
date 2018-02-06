@@ -17,9 +17,10 @@
                    :source-paths   ["src/dev/clj"
                                     "src/dev/clj"]
                    :resource-paths ["src/dev/resources"]
-                   }}
+                   :doc-paths      ["README.md" "docs"]}}
 
-  :plugins [[me.arrdem/lein-git-version "2.0.4"]]
+  :plugins [[me.arrdem/lein-git-version "2.0.4"]
+            [me.arrdem/lein-auto "0.1.4"]]
   :git-version {:status-to-version
                 (fn [{:keys [tag version branch ahead ahead? dirty?] :as git}]
                   (if (and tag (not ahead?) (not dirty?))
@@ -31,5 +32,7 @@
                             patch            (Long/parseLong patch)
                             patch+           (inc patch)]
                         (format "%s.%d-%s-SNAPSHOT" prefix patch+ branch))
+                      "0.1.0-SNAPSHOT")))}
 
-                      "0.1.0-SNAPSHOT")))})
+  :auto           {"test" {:file-pattern #"\.(clj|cljs|cljx|cljc|edn|md)$"
+                           :paths        [:source-paths :test-paths :doc-paths]}})
