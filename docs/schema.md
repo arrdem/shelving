@@ -13,64 +13,45 @@ Shelves are expected to persist and check their schemas across close and re-open
 
 There are two kinds of supported specs - "value" specs and "record" specs.
 
-#### Records
+In traditional databases, one stores <span name="records">**"records"**</span> - places with unique
+identifiers which may be updated. Records can be inserted, updated and removed.
 
-In traditional databases, one stores "records" - places with unique identifiers which may be
-updated. Records can be inserted, updated and removed.
+In keeping with Clojure's focus on data, Shelving also supports content or <span name="values">**"value"**</span>
+storage of immutable objects. Values can only be inserted.
 
-#### Values
-
-In keeping with Clojure's focus on data, Shelving also supports content or "value" storage of
-immutable objects. Values can only be inserted.
-
-## shelving.core/enumerate-specs
+## [shelving.core/enumerate-specs](/src/main/clj/shelving/core.clj#L131)
  - `(enumerate-specs conn)`
 
 Enumerates all the known specs.
 
-Shelves must implement this method.
+Shelves may provide alternate implementations of this method.
 
-## shelving.core/is-record?
- - `(is-record? schema spec)`
-
-True if and only if the spec exists and is a record spec.
-
-## shelving.core/id-for-val
- - `(id-for-val schema spec val)`
-
-Returns the `val`'s identifying UUID according to the spec's schema entry.
-
-## shelving.core/empty-schema
-
-The empty Shelving schema.
-
-Should be used as the basis for all user-defined schemas.
-
-## shelving.core/enumerate-spec
+## [shelving.core/enumerate-spec](/src/main/clj/shelving/core.clj#L144)
  - `(enumerate-spec conn spec)`
 
 Enumerates all the known records of a spec by UUID.
 
 Shelves must implement this method.
 
-## shelving.core/is-value?
+By default throws `me.arrdem.UnimplementedOperationException`.
+
+## [shelving.core/empty-schema](/src/main/clj/shelving/core.clj#L251)
+
+The empty Shelving schema.
+
+Should be used as the basis for all user-defined schemas.
+
+## [shelving.core/has-spec?](/src/main/clj/shelving/core.clj#L283)
+ - `(has-spec? schema spec)`
+
+Helper used for preconditions.
+
+## [shelving.core/is-value?](/src/main/clj/shelving/core.clj#L296)
  - `(is-value? schema spec)`
 
 True if and only if the spec exists and is a `:value` spec.
 
-## shelving.core/record-spec
- - `(record-spec schema spec & {:as opts})`
-
-Enters a new "record" spec into a schema, returning a new schema.
-
-Records have traditional place semantics and are identified by randomly generated IDs, rather than the structural semantics ascribed to values.
-
-## shelving.core/schema->specs
- - `(schema->specs schema)`
-
-Helper used for converting a schema record to a set of specs for storage.
-
-## shelving.core/value-spec
+## [shelving.core/value-spec](/src/main/clj/shelving/core.clj#L309)
  - `(value-spec schema spec & {:as opts})`
 
 Enters a new "value" spec into a schema, returning a new schema.
@@ -79,7 +60,25 @@ Values are addressed by a content hash derived ID, are unique and cannot be dele
 
 Values may be related to other values via schema rel(ation)s. Records may relate to values, but values cannot relate to records except through reverse lookup on a record to value relation.
 
-## shelving.core/has-spec?
- - `(has-spec? schema spec)`
+## [shelving.core/is-record?](/src/main/clj/shelving/core.clj#L339)
+ - `(is-record? schema spec)`
 
-Helper used for preconditions.
+True if and only if the spec exists and is a record spec.
+
+## [shelving.core/record-spec](/src/main/clj/shelving/core.clj#L352)
+ - `(record-spec schema spec & {:as opts})`
+
+Enters a new "record" spec into a schema, returning a new schema.
+
+Records have traditional place semantics and are identified by randomly generated IDs, rather than the structural semantics ascribed to values.
+
+## [shelving.core/id-for-record](/src/main/clj/shelving/core.clj#L379)
+ - `(id-for-record schema spec val)`
+
+Returns the `val`'s identifying UUID according to the spec's schema entry.
+
+## [shelving.core/schema->specs](/src/main/clj/shelving/core.clj#L396)
+ - `(schema->specs schema)`
+
+Helper used for converting a schema record to a set of specs for storage.
+

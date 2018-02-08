@@ -40,6 +40,33 @@
                (map #(str "- " (format-error %)))
                (str/join "\n"))))
 
+(t/deftest test-docstring-presence
+  (doseq [ns        (all-ns)
+          [sym var] (ns-publics ns)
+          :when     (and (var? var)
+                         (.contains (str var) "shelving")
+                         (not (.contains (str var) "-test")))
+          :let      [{:keys [doc] :as meta} (meta var)]]
+    (t/is doc (format "Var %s is public and doesn't have a docstring!" var))))
+
+(t/deftest test-categories-presence
+  (doseq [ns        (all-ns)
+          [sym var] (ns-publics ns)
+          :when     (and (var? var)
+                         (.contains (str var) "shelving")
+                         (not (.contains (str var) "-test")))
+          :let      [{:keys [categories] :as meta} (meta var)]]
+    (t/is categories (format "Var %s is public and doesn't have a categorization!" var))))
+
+(t/deftest test-added-presence
+  (doseq [ns        (all-ns)
+          [sym var] (ns-publics ns)
+          :when     (and (var? var)
+                         (.contains (str var) "shelving")
+                         (not (.contains (str var) "-test")))
+          :let      [{:keys [added] :as meta} (meta var)]]
+    (t/is added (format "Var %s is public and doesn't have a added!" var))))
+
 #_(t/deftest test-docstring-spelling
     (doseq [ns        (all-ns)
             [sym var] (ns-publics ns)
@@ -68,7 +95,7 @@
             :when       (or (.endsWith (str (.toURI f)) ".md")
                             (.endsWith (str (.toURI f)) ".markdown"))
             :let        [buff (slurp (io/reader f))
-                         symbols (re-seq #"(?:\n## )(?<namespace>[^/]*?)/(?<name>\S+)" buff)]
+                         symbols (re-seq #"(?:\n## \[)(?<namespace>[^/]*?)/(?<name>[^\]]+)\]" buff)]
             [_ ns name] symbols
             :when       (.contains ns "shelving.")
             :let        [the-sym (symbol ns name)]]

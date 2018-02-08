@@ -39,7 +39,7 @@
                 r1 (sh/put conn ::foo v1)
                 v2 (sgen/generate foo-gen)
                 r2 (sh/put conn ::foo v2)]
-            
+
             (t/is (= v1 (sh/get conn ::foo r1)))
             (t/is (= v2 (sh/get conn ::foo r2)))
             (t/is (= (list r1 r2) (sh/enumerate-spec conn ::foo)))
@@ -72,9 +72,9 @@
               baz-id  (sh/put conn ::baz baz)]
           (t/is foo-id)
           (t/is baz-id)
-          ;; Relations are bidirectional on read, unidirectional on write.
-          (t/is (some #{foo-id} (sh/get-from-rel-by-id conn [::baz ::foo] ::baz baz-id)))
-          (t/is (some #{baz-id} (sh/get-from-rel-by-id conn [::baz ::foo] ::foo foo-id))))))))
+                        ;; Relations are bidirectional on read, unidirectional on write.
+          (t/is (some #{foo-id} (sh/relate-by-id conn [::baz ::foo] baz-id)))
+          (t/is (some #{baz-id} (sh/relate-by-id conn [::foo ::baz] foo-id))))))))
 
 (defn record-rel-tests [->cfg]
   (let [foo-gen (s/gen ::foo)
@@ -94,21 +94,21 @@
               baz-id   (sh/put conn ::baz baz)]
           (t/is foo-id)
           (t/is baz-id)
-          ;; Relations are bidirectional on read, unidirectional on write.
-          (t/is (some #(= % foo-id) (sh/get-from-rel-by-id conn [::baz ::foo] ::baz baz-id)))
-          (t/is (some #(= % baz-id) (sh/get-from-rel-by-id conn [::baz ::foo] ::foo foo-id)))
+                        ;; Relations are bidirectional on read, unidirectional on write.
+          (t/is (some #(= % foo-id) (sh/relate-by-id conn [::baz ::foo] baz-id)))
+          (t/is (some #(= % baz-id) (sh/relate-by-id conn [::foo ::baz] foo-id)))
 
-          ;; Now perform a write which should invalidate the above properties
+                        ;; Now perform a write which should invalidate the above properties
           (sh/put conn ::baz baz-id baz')
-          ;; The old values should no longer be associated as baz has changed.
-          ;; But only if foo and foo' are distinct.
+                        ;; The old values should no longer be associated as baz has changed.
+                        ;; But only if foo and foo' are distinct.
           (when (not= the-foo the-foo')
-            (t/is (not-any? #{foo-id} (sh/get-from-rel-by-id conn [::baz ::foo] ::baz baz-id)))
-            (t/is (not-any? #{baz-id} (sh/get-from-rel-by-id conn [::baz ::foo] ::foo foo-id))))
+            (t/is (not-any? #{foo-id} (sh/relate-by-id conn [::baz ::foo] baz-id)))
+            (t/is (not-any? #{baz-id} (sh/relate-by-id conn [::foo ::foo] foo-id))))
 
-          ;; The new values should be in effect
-          (t/is (some #{foo-id'} (sh/get-from-rel-by-id conn [::baz ::foo] ::baz baz-id)))
-          (t/is (some #{baz-id}  (sh/get-from-rel-by-id conn [::baz ::foo] ::foo foo-id'))))))))
+                        ;; The new values should be in effect
+          (t/is (some #{foo-id'} (sh/relate-by-id conn [::baz ::foo] baz-id)))
+          (t/is (some #{baz-id}  (sh/relate-by-id conn [::foo ::baz] foo-id'))))))))
 
 (defn rel-tests [->cfg]
   (value-rel-tests ->cfg)

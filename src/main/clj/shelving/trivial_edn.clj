@@ -53,6 +53,9 @@
 ;; EDN shelves don't have write batching and are always open.
 (defmethod sh/open ::shelf [s] s)
 
+(defmethod sh/schema ::shelf [{:keys [schema]}]
+  schema)
+
 ;; EDN shelves don't have write batching and don't have to be closed.
 (defmethod sh/flush ::shelf [{:keys [shelving.trivial-edn/state path]}]
   (let [file (io/file path)]
@@ -72,7 +75,7 @@
 
 (declare ^:private put*)
 
-(defn rel-invalidate-record*
+(defn- rel-invalidate-record*
   "Relation implementation detail.
 
   Returns a new rel map, with the given record-id's entries purged."
@@ -85,7 +88,7 @@
                 (update-in % [to-spec to] #(remove #{record-id} %)))
               % tos))))
 
-(defn rel-invalidate-record
+(defn- rel-invalidate-record
   "Relation implementation detail.
 
   Removes all pairs containing the given `record-id` from all rel tables."
@@ -96,7 +99,7 @@
          [rel-id (rel-invalidate-record* rel-id rel-map record-id)])
        (into {})))
 
-(defn rel-index-record
+(defn- rel-index-record
   "Relation implementation detail.
 
   Updates all rel tables to reflect the new record with the given ID."
@@ -105,14 +108,16 @@
                              :when                                     (= spec from-spec)]
                          [rel-id rel-spec])]
     (reduce (fn [state [[from-spec to-spec :as rel-id] {:keys [to-fn] :as rel}]]
-              (let [{:keys [id-fn] :as to-schema} (get-in schema [:specs to-spec])
-                    to-record                     (to-fn record)
-                    to-id                         (id-fn to-record)]
-                (-> state
-                    (put* schema to-spec to-id to-record)
-                    (update-in [:rels rel-id :pairs] conj [record-id to-id])
-                    (update-in [:rels rel-id to-spec to-id] conj record-id)
-                    (update-in [:rels rel-id from-spec record-id] conj to-id))))
+              (if (sh/is-alias? schema rel-id)
+                state
+                (let [{:keys [id-fn] :as to-schema} (get-in schema [:specs to-spec])
+                      to-record                     (to-fn record)
+                      to-id                         (id-fn to-record)]
+                  (-> state
+                      (put* schema to-spec to-id to-record)
+                      (update-in [:rels rel-id :pairs] conj [record-id to-id])
+                      (update-in [:rels rel-id to-spec to-id] conj record-id)
+                      (update-in [:rels rel-id from-spec record-id] conj to-id)))))
             state rels-to-update)))
 
 ;; FIXME (arrdem 2018-02-04):
@@ -135,13 +140,13 @@
 
 (defn- put-record*
   ([{:keys [schema] :as conn} spec val]
-   (put-record* conn spec (sh/id-for-val schema spec val) val))
+   (put-record* conn spec (sh/id-for-record schema spec val) val))
   ([{:keys [shelving.trivial-edn/state schema] :as conn} spec id val]
    (swap! state put* schema spec id val)
    id))
 
 (defn- put-val* [{:keys [schema] :as conn} spec val]
-  (put-record* conn spec (sh/id-for-val schema spec val) val))
+  (put-record* conn spec (sh/id-for-record schema spec val) val))
 
 (defmethod sh/put ::shelf
   ([{:keys [schema flush-after-write] :as conn} spec val]
@@ -160,23 +165,20 @@
        (sh/flush conn))
      id)))
 
-(defmethod sh/enumerate-specs ::shelf [{:keys [schema shelving.trivial-edn/state]}]
-  (some-> schema :specs keys))
-
 (defmethod sh/enumerate-spec ::shelf [{:keys [shelving.trivial-edn/state]} spec]
   (some-> @state (get :records) (get spec) keys))
-
-(defmethod sh/enumerate-rels ::shelf [{:keys [shelving.trivial-edn/state]}]
-  (some-> @state (get :rels) keys))
 
 (defmethod sh/enumerate-rel ::shelf [{:keys [shelving.trivial-edn/state]} rel]
   (some-> @state (get :rels) (get rel) (get :pairs) seq))
 
-(defmethod sh/get-from-rel-by-id ::shelf [{:keys [shelving.trivial-edn/state]} rel spec id]
-  (some-> @state (get :rels) (get rel) (get spec) (get id) seq))
+(defmethod sh/relate-by-id ::shelf [{:keys [shelving.trivial-edn/state schema]} [from-spec to-spec :as rel] id]
+  (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) (get from-spec) (get id) seq))
 
 (defn ->TrivialEdnShelf
   "Configures a (trivial) EDN shelf which can be opened for reading and writing."
+  {:categories #{::sh/basic}
+   :added      "0.0.0"
+   :stability  :stability/stable}
   [schema path & {:keys [flush-after-write load]
                   :or   {flush-after-write false
                          load              true}}]

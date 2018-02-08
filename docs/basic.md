@@ -5,7 +5,41 @@
 The various shelving implementations define their own mechanisms for constructing
 configurations. These operations should be shared by all implementations.
 
-## shelving.core/put
+## [shelving.core/open](/src/main/clj/shelving/core.clj#L40)
+ - `(open config)`
+
+Opens a shelf for reading or writing.
+
+Shelves must implement this method.
+
+## [shelving.core/flush](/src/main/clj/shelving/core.clj#L52)
+ - `(flush conn)`
+
+Flushes (commits) an open shelf.
+
+Shelves must implement this method.
+
+By default throws `me.arrdem.UnimplementedOperationException`.
+
+## [shelving.core/close](/src/main/clj/shelving/core.clj#L66)
+ - `(close conn)`
+
+Closes an open shelf.
+
+Shelves may implement this method.
+
+By default just flushes.
+
+## [shelving.core/get](/src/main/clj/shelving/core.clj#L81)
+ - `(get conn spec record-id)`
+
+Fetches a record from a shelf by its spec and ID.
+
+Shelves must implement this method.
+
+By default throws `me.arrdem.UnimplementedOperationException`.
+
+## [shelving.core/put](/src/main/clj/shelving/core.clj#L93)
  - `(put conn spec val)`
  - `(put conn spec id val)`
 
@@ -17,32 +51,16 @@ It is an error to specify the ID when inserting into a "value" shelf.
 
 Shelves must implement this method.
 
-## shelving.core/open
- - `(open config)`
+By default throws `me.arrdem.UnimplementedOperationException`.
 
-Opens a shelf for reading or writing.
+## [shelving.core/schema](/src/main/clj/shelving/core.clj#L115)
+ - `(schema conn)`
 
-Shelves must implement this method.
+Returns the schema record for a given connection.
 
-## shelving.core/flush
- - `(flush conn)`
-
-Flushes (commits) an open shelf.
+Schemas are fixed when the connection is opened.
 
 Shelves must implement this method.
 
-## shelving.core/get
- - `(get conn spec record-id)`
+By default throws `me.arrdem.UnimplementedOperationException`.
 
-Fetches a record from a shelf by its spec and ID.
-
-Shelves must implement this method.
-
-## shelving.core/close
- - `(close conn)`
-
-Closes an open shelf.
-
-Shelves may implement this method.
-
-By default just flushes.
