@@ -6,7 +6,7 @@
 > Collective form of Shelf; a thin slab of wood, metal, etc., fixed horizontally to a wall or in a
 > frame, for supporting objects.
 
-Before you can have [stacks](https://github.com/arrdem/stacks), you need shelves for the books.
+Before you can have [Stacks](https://github.com/arrdem/stacks), you need shelving for the books.
 
 ## Manifesto
 
@@ -23,35 +23,30 @@ Shelving is a tool set for trying to implement quick-and-dirty storage layers fo
 [spec](https://github.com/clojure/spec.alpha)'d data while retaining some of the query niceties that
 make ORMs and real databases compelling.
 
-### Caveats
-
-Shelves are intended to make a particular set of trade-offs
-
-- Multiple consistent back-ends are valuable
-- Validation against a schema or spec is a desirable
-- Read and write access is by point (single record) addresses
-- Linear scans are acceptable if not the common case for exploring the store
-
-Support for indexes and queries (datalog?) may be added if I can figure out how to relate them to
-the spec structure of stored data. Unfortunately some spec features such as multispecs, regular
-expressions and arbitrary predicates make this difficult.
-
 ## Usage
-- [Basic API](/docs/basic.md)
+For brevity, only selected vars are listed here.
+See the docs for complete listings.
+
+- [Basic API](/docs/basic.md) - The core API
   - [shelving.core/open](/docs/basic.md#shelvingcoreopen)
   - [shelving.core/flush](/docs/basic.md#shelvingcoreflush)
   - [shelving.core/close](/docs/basic.md#shelvingcoreclose)
   - [shelving.core/put](/docs/basic.md#shelvingcoreput)
   - [shelving.core/get](/docs/basic.md#shelvingcoreget)
-  - [shelving.core/enumerate-specs](/docs/basic.md#shelvingcoreenumerate-specs)
-  - [shelving.core/enumerate-records](/docs/basic.md#shelvingcoreenumerate-records)
-- [Shelf Spec API](/docs/schema.md#schema-api)
+- [Shelf Spec API](/docs/schema.md#schema-api) - Specs describe the structure of values, but must be declared in a schema to associate semantics with that structure.
   - [shelving.core/empty-schema](/docs/schema.md#shelvingcoreemptyschema)
-  - [shelving.core/shelf-spec](/docs/schema.md#shelvingcoreshelf-spec)
-- [UUID helpers](/docs/helpers.md#uuid-helpers)
-  - [shelving.core/random-uuid](/docs/helpers.md#shelvingcorerandom-uuid)
+  - [shelving.core/value-spec](/docs/schema.md#shelvingcorevalue-spec)
+  - [shelving.core/record-spec](/docs/schema.md#shelvingcorerecord-spec)
+- [Shelf Relation API](/docs/rel.md#rel-api) - Rel(ation)s between vals on a shelf.
+  Usable to implement query systems and interned values.
+  - [shelving.core/shelf-rel](/docs/rel.md#shelvingcoreshelf-rel)
+  - [shelving.core/enumerate-rels](/docs/rel.md#shelvingcoreenumerate-rels)
+  - [shelving.core/enumerate-rel](/docs/rel.md#shelvingcoreenumerate-rel)
+- [UUID helpers](/docs/helpers.md) - Mostly implementation details, but possibly interesting.
 
 See also the [Grimoire v3 case study](/src/dev/clj/grimoire.clj) which motivates much of this work.
+
+### Demo
 
 Shelving includes a "trivial" back end, which provides most of the same behavior as simpledb, along
 with the same trade-offs of always keeping everything in memory and using EDN for
@@ -64,10 +59,12 @@ user> (require '[clojure.spec.alpha :as s])
 nil
 user> (s/def ::foo string?)
 :user/foo
+user> (s/def ::bar string?)
+:user/bar
 user> (def schema
         (-> sh/empty-schema
-            ;; Add a hew spec to the schema sing content hashing for ID generation
-            (sh/shelf-spec ::foo sh/texts->sha-uuid)))
+            (sh/value-spec  ::foo)   ;; values are immutable, unique
+            (sh/record-spec ::foo))) ;; records are mutable; places
 #'user/schema
 user> (require '[shelving.trivial-edn :refer [->TrivialEdnShelf]])
 nil
@@ -75,21 +72,26 @@ user> (def *conn
         (-> (->TrivialEdnShelf schema "demo.edn")
             (sh/open)))
 #'user/*conn
+;; Inserting some values
 user> (sh/put *conn ::foo "my first write")
-#uuid "33a65680-b734-fec6-bd92-1cb7df6caacf"
+#uuid "33a65680-b734-fec6-a656-80b734fec6bd"
 user> (sh/put *conn ::foo "another write")
-#uuid "d47453e5-4611-a98e-03cb-d151e644a286"
-user> (sh/enumerate-specs *conn)
-(:user/foo)
-user> (sh/enumerate-records *conn ::foo)
-(#uuid "33a65680-b734-fec6-bd92-1cb7df6caacf" #uuid "d47453e5-4611-a98e-03cb-d151e644a286")
-user> (map (partial sh/get *conn ::foo) (sh/enumerate-records *conn ::foo))
-("my first write" "another write")
-user> (sh/put *conn ::foo #uuid "33a65680-b734-fec6-bd92-1cb7df6caacf" "an overwrite")
-#uuid "33a65680-b734-fec6-bd92-1cb7df6caacf"
-user> (sh/get *conn ::foo #uuid "33a65680-b734-fec6-bd92-1cb7df6caacf")
-"an overwrite"
-user> 
+#uuid "d47453e5-4611-a98e-7453-e54611a98e03"
+user> (sh/enumerate-spec *conn ::foo)
+(#uuid "33a65680-b734-fec6-a656-80b734fec6bd" #uuid "d47453e5-4611-a98e-7453-e54611a98e03")
+;; Values are content-hashed and deduplicated
+user> (sh/put *conn ::foo "another write")
+#uuid "d47453e5-4611-a98e-7453-e54611a98e03"
+user> (sh/enumerate-spec *conn ::foo)
+(#uuid "33a65680-b734-fec6-a656-80b734fec6bd" #uuid "d47453e5-4611-a98e-7453-e54611a98e03")
+;; Records however are mutable
+user> (sh/put *conn ::bar "some text")
+#uuid "eaecbe3d-ae9f-4cab-992d-24fbba0414af"
+user> (sh/put *conn ::bar *1 "some other text")
+#uuid "35a91d37-504b-4fc5-b386-6291da8867db"
+user> (sh/get *conn ::bar *1)
+"some other text"
+user>
 ```
 
 ## License

@@ -22,16 +22,11 @@
                    :org.maven/artifact
                    :org.maven/version]))
 
-(defmulti ->id :type)
-
 (defn ->mvn-pkg [group artifact version]
-  {:type :org.maven/package
-   :group group
+  {:type     :org.maven/package
+   :group    group
    :artifact artifact
-   :version version})
-
-(defmethod ->id :org.maven/package [{:keys [group artifact version]}]
-  (shelving/texts->sha-uuid group artifact version))
+   :version  version})
 
 (defmethod package->spec :org.maven/package [_]
   :org.maven/package)
@@ -41,7 +36,7 @@
 (defmulti entity->spec
   :type)
 
-(defmulti get-parent
+(defmulti entity->package
   :type)
 
 (s/def ::entity
@@ -63,19 +58,16 @@
                    :org.clojure.namespace/platform]))
 
 (defn ->namespace [package platform name]
-  {:type :org.clojure/namespace
-   :package package
+  {:type     :org.clojure/namespace
+   :package  package
    :platform platform
-   :name name})
+   :name     name})
 
 (defmethod entity->spec :org.clojure/namespace [_]
   :org.clojure/namespace)
 
-(defmethod get-parent :org.clojure/namespace [{:keys [package]}]
+(defmethod entity->package :org.clojure/namespace [{:keys [package]}]
   package)
-
-(defmethod ->id :org.clojure/namespace [{:keys [package platform name]}]
-  (shelving/texts->sha-uuid (.toString (->id package)) platform name))
 
 (s/def :org.clojure.def/type
   #{:org.clojure/def})
@@ -91,15 +83,14 @@
 (defmethod entity->spec :org.clojure/def [_]
   :org.clojure/def)
 
-(defmethod get-parent :org.clojure/def [{:keys [namespace]}]
-  namespace)
-
-(defmethod ->id :org.clojure/def [{:keys [name namespace]}]
-  (shelving/texts->sha-uuid (.toString (->id namespace)) name))
+(defmethod entity->package :org.clojure/def [{:keys [namespace]}]
+  (entity->package namespace))
 
 ;; Annotations on entities.
 ;;--------------------------------------------------------------------------------------------------
 (defmulti annotation->spec :type)
+(defmulti annotation->entity :type)
+(defmulti annotation->package :type)
 
 (s/def ::annotation
   (s/multi-spec grimoire/annotation->spec :annotation))
@@ -119,13 +110,22 @@
   string?)
 
 (s/def :org.clojure-grimoire/example
-  (s/keys :opt-un [:org.clojure-grimoire.example/name
-                   :org.clojure-grimoire.example/metadata]
-          :req-un [:org.clojure-grimoire.example/type
-                   :org.clojure-grimoire.example/text]))
+  (s/and (s/keys :opt-un [:org.clojure-grimoire.example/name
+                          :org.clojure-grimoire.example/metadata]
+                 :req-un [:org.clojure-grimoire.example/type
+                          :org.clojure-grimoire.example/text])
+         (s/or :entity  (s/keys :req-un [::entity])
+               :package (s/keys :req-un [::package]))))
 
 (defmethod annotation->spec :org.clojure-grimoire/example [_]
   :org.clojure-grimoire/example)
+
+(defmethod annotation->entity :org.clojure-grimoire/example [{:keys [entity]}]
+  entity)
+
+(defmethod annotation->package :org.clojure-grimoire/example [{:keys [package entity]}]
+  (or package
+      (entity->package entity)))
 
 ;; Articles
 (s/def :org.clojure-grimoire.article/type
@@ -141,28 +141,31 @@
   map?)
 
 (s/def :org.clojure-grimoire/article
-  (s/keys :req-un [:org.clojure-grimoire.article/type
-                   :org.clojure-grimoire.article/metadata
-                   :org.clojure-grimoire.article/title
-                   :org.clojure-grimoire.article/text]
-          :opt-un [:org.clojure-grimoire.article/metadata]))
+  (s/and (s/keys :req-un [:org.clojure-grimoire.article/type
+                          :org.clojure-grimoire.article/metadata
+                          :org.clojure-grimoire.article/title
+                          :org.clojure-grimoire.article/text]
+                 :opt-un [:org.clojure-grimoire.article/metadata])
+         (s/or :entity  (s/keys :req-un [::entity])
+               :package (s/keys :req-un [::package]))))
 
 (defmethod annotation->spec :org.clojure-grimoire/article [_]
   :org.clojure-grimoire/article)
 
+(defmethod annotation->entity :org.clojure-grimoire/article [{:keys [entity]}]
+  entity)
+
+(defmethod annotation->package :org.clojure-grimoire/article [{:keys [package entity]}]
+  (or package
+      (entity->package entity)))
+
 (def schema
   (-> shelving/empty-schema
-      (shelving/shelf-spec ::package ->id)
+      (shelving/value-spec ::package)
 
-      (shelving/shelf-spec ::entity ->id)
+      (shelving/value-spec ::entity)
+      (shelving/spec-rel  [::entity ::package] entity->package)
 
-      (shelving/shelf-spec ::annotation ->id)))
-
-(comment
-  (def *conn
-    (-> (ts/->TrivialEdnShelf grimoire-schema "target/grim.edn")
-        (shelving/open)))
-
-  (shelving/put *conn ::package (->mvn-pkg "org.clojure" "clojure" "1.6.0"))
-
-  (shelving/flush *conn))
+      (shelving/record-spec ::annotation)
+      (shelving/spec-rel  [::annotation ::entity] annotation->entity)
+      (shelving/spec-rel  [::annotation ::package] annotation->package)))

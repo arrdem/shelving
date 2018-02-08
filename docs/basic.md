@@ -5,39 +5,62 @@
 The various shelving implementations define their own mechanisms for constructing
 configurations. These operations should be shared by all implementations.
 
-## shelving.core/open
-- `(open config)`
+## [shelving.core/open](/src/main/clj/shelving/core.clj#L40)
+ - `(open config)`
 
-Opens a configuration, producing a readable and writable shelf.
+Opens a shelf for reading or writing.
 
-## shelving.core/flush
-- `(flush conn)`
+Shelves must implement this method.
 
-Good 'ol `fsync(2)`. Flushes the shelf but doesn't close it.
+## [shelving.core/flush](/src/main/clj/shelving/core.clj#L52)
+ - `(flush conn)`
 
-## shelving.core/close
-- `(close conn)`
+Flushes (commits) an open shelf.
 
-Closes an open shelf. No attempt is made to define the effect of closing a shelf twice.
+Shelves must implement this method.
 
-## shelving.core/put
-- `(put conn spec val)`
-- `(put conn spec uuid val)`
+By default throws `me.arrdem.UnimplementedOperationException`.
 
-Writes a val to the shelf. The spec must name a spec which is legal in the shelf's schema, and which
-val conforms to. If no UUID is provided, then the table's ID generation strategy is used.
+## [shelving.core/close](/src/main/clj/shelving/core.clj#L66)
+ - `(close conn)`
 
-## shelving.core/get
-- `(put conn spec uuid)`
+Closes an open shelf.
 
-Fetches a record from the shelf by spec and UUID.
+Shelves may implement this method.
 
-## shelving.core/enumerate-specs
-- `(enumerate-specs conn)`
+By default just flushes.
 
-Returns a sequence all the specs in the shelf.
+## [shelving.core/get](/src/main/clj/shelving/core.clj#L81)
+ - `(get conn spec record-id)`
 
-## shelving.core/enumerate-records
-- `(enumerate-records conn spec)`
+Fetches a record from a shelf by its spec and ID.
 
-Returns a sequence of the UUIDs of the records of that spec in the shelf.
+Shelves must implement this method.
+
+By default throws `me.arrdem.UnimplementedOperationException`.
+
+## [shelving.core/put](/src/main/clj/shelving/core.clj#L93)
+ - `(put conn spec val)`
+ - `(put conn spec id val)`
+
+Enters a record into a shelf according to its spec in the schema, inserting substructures and updating all relevant rel(ation)s.
+
+For shelves storing "records" not "values", the `id` parameter may be used to either control the ID of the record, say for achieving an upsert.
+
+It is an error to specify the ID when inserting into a "value" shelf.
+
+Shelves must implement this method.
+
+By default throws `me.arrdem.UnimplementedOperationException`.
+
+## [shelving.core/schema](/src/main/clj/shelving/core.clj#L115)
+ - `(schema conn)`
+
+Returns the schema record for a given connection.
+
+Schemas are fixed when the connection is opened.
+
+Shelves must implement this method.
+
+By default throws `me.arrdem.UnimplementedOperationException`.
+
