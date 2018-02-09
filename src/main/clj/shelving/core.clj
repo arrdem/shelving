@@ -18,7 +18,8 @@
            [java.nio ByteBuffer]
            [me.arrdem UnimplementedOperationException])
   (:require [clojure.walk :refer [postwalk]]
-            [clojure.spec.alpha :as s]))
+            [clojure.spec.alpha :as s]
+            [hasch.core :refer [uuid]]))
 
 (defn- dx
   ([{:keys [type]}] type)
@@ -179,37 +180,6 @@
      (.getLong buff 0)
      (.getLong buff 1))))
 
-(defn content-hash
-  "A generic Clojure content hash based on using
-  `#'clojure.walk/postwalk` to accumulate hash values from
-  substructures.
-
-  For general Objects, takes the `java.lang.Object/hashCode` for each
-  object in postwalk's order. Strings however are fully digested as
-  UTF-8 bytes.
-
-  The precise hash used may be configured, but must be of at least
-  128bi in length as the first 128bi are converted to a UUID, which is
-  returned."
-  {:categories #{::util}
-   :added      "0.0.0"
-   :stability  :stability/stable}
-  ([val]
-   (content-hash "SHA-256" val))
-  ([digest-name val]
-   (let [digester  (MessageDigest/getInstance digest-name)
-         buff      (ByteBuffer/allocate (inc Integer/BYTES))
-         add-hash! (fn [o]
-                     (when o
-                       (cond (string? o)
-                             (.update digester (.getBytes o "UTF-8"))
-                             :else
-                             (do (.putInt buff 0 (hash o))
-                                 (.update digester (.array buff))))
-                       nil))]
-     (postwalk (fn [o] (add-hash! o) o) val)
-     (digest->uuid (.digest digester)))))
-
 ;; Intentional interface for schemas
 ;;--------------------------------------------------------------------------------------------------
 
@@ -329,7 +299,7 @@
   (when (not-empty opts)
     (binding [*out* *err*]
       (println "Warning: value-spec got ignored opts" opts)))
-  (shelf-spec* schema spec false content-hash))
+  (shelf-spec* schema spec false uuid))
 
 (s/fdef is-record?
         :args (s/cat :schema ::schema

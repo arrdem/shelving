@@ -64,7 +64,7 @@ user> (s/def ::bar string?)
 user> (def schema
         (-> sh/empty-schema
             (sh/value-spec  ::foo)   ;; values are immutable, unique
-            (sh/record-spec ::foo))) ;; records are mutable; places
+            (sh/record-spec ::bar))) ;; records are mutable; places
 #'user/schema
 user> (require '[shelving.trivial-edn :refer [->TrivialEdnShelf]])
 nil
@@ -72,23 +72,20 @@ user> (def *conn
         (-> (->TrivialEdnShelf schema "demo.edn")
             (sh/open)))
 #'user/*conn
-;; Inserting some values
 user> (sh/put *conn ::foo "my first write")
-#uuid "33a65680-b734-fec6-a656-80b734fec6bd"
+#uuid "086c317d-9957-56ec-87e5-6c999c6f9b40"
 user> (sh/put *conn ::foo "another write")
-#uuid "d47453e5-4611-a98e-7453-e54611a98e03"
+#uuid "10befd2c-0a4b-5aed-a0eb-afcac7004643"
 user> (sh/enumerate-spec *conn ::foo)
-(#uuid "33a65680-b734-fec6-a656-80b734fec6bd" #uuid "d47453e5-4611-a98e-7453-e54611a98e03")
-;; Values are content-hashed and deduplicated
+(#uuid "086c317d-9957-56ec-87e5-6c999c6f9b40" #uuid "10befd2c-0a4b-5aed-a0eb-afcac7004643")
 user> (sh/put *conn ::foo "another write")
-#uuid "d47453e5-4611-a98e-7453-e54611a98e03"
+#uuid "10befd2c-0a4b-5aed-a0eb-afcac7004643"
 user> (sh/enumerate-spec *conn ::foo)
-(#uuid "33a65680-b734-fec6-a656-80b734fec6bd" #uuid "d47453e5-4611-a98e-7453-e54611a98e03")
-;; Records however are mutable
+(#uuid "086c317d-9957-56ec-87e5-6c999c6f9b40" #uuid "10befd2c-0a4b-5aed-a0eb-afcac7004643")
 user> (sh/put *conn ::bar "some text")
-#uuid "eaecbe3d-ae9f-4cab-992d-24fbba0414af"
+#uuid "78ac02ce-6fe8-426a-86c4-a9594339fd38"
 user> (sh/put *conn ::bar *1 "some other text")
-#uuid "35a91d37-504b-4fc5-b386-6291da8867db"
+#uuid "78ac02ce-6fe8-426a-86c4-a9594339fd38"
 user> (sh/get *conn ::bar *1)
 "some other text"
 user>
