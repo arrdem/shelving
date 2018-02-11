@@ -9,17 +9,15 @@
   for use when the read and write load is so small that flushing the
   entire store every time is an acceptable cost compared to the
   complexity of a more traditional storage layer or database."
-  {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"]
-   :license "Eclipse Public License 1.0"
+  {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
+   :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:refer-clojure :exclude [flush get])
-  (:import [java.util UUID]
-           [java.security MessageDigest]
-           [java.nio ByteBuffer]
-           [me.arrdem UnimplementedOperationException])
-  (:require [clojure.walk :refer [postwalk]]
-            [clojure.spec.alpha :as s]
-            [hasch.core :refer [uuid]]))
+  (:require [clojure.spec.alpha :as s]
+            [hasch.core :refer [uuid]])
+  (:import java.nio.ByteBuffer
+           java.util.UUID
+           me.arrdem.UnimplementedOperationException))
 
 (defn- dx
   ([{:keys [type]}] type)
@@ -155,6 +153,23 @@
   #'dx)
 
 (required! enumerate-spec)
+
+(defmulti count-spec
+  "Returns at least an upper bound on the cardinality of a given spec.
+
+  Implementations of this method should be near constant time and
+  should not require realizing the relation in question.
+
+  Shelves must implement this method.
+
+  By default throws `me.arrdem.UnimplementedOperationException`."
+  {:categories #{::query}
+   :stability  :stability/unstable
+   :added      "0.0.1"
+   :arglists   '([conn spec])}
+  #'dx)
+
+(required! count-spec)
 
 ;; ID tools
 ;;--------------------------------------------------------------------------------------------------
@@ -520,6 +535,23 @@
   #'dx)
 
 (required! enumerate-rel)
+
+(defmulti count-rel
+  "Returns at least an upper bound on the cardinality of a given relation.
+
+  Implementations of this method should be near constant time and
+  should not require realizing the relation in question.
+
+  Shelves must implement this method.
+
+  By default throws `me.arrdem.UnimplementedOperationException`."
+  {:categories #{::query}
+   :stability  :stability/unstable
+   :added      "0.0.1"
+   :arglists   '([conn rel-id])}
+  #'dx)
+
+(required! count-rel)
 
 (defmulti relate-by-id
   "Given a rel(ation) and the ID of an record of the from-rel spec,

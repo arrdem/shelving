@@ -168,8 +168,14 @@
 (defmethod sh/enumerate-spec ::shelf [{:keys [shelving.trivial-edn/state]} spec]
   (some-> @state (get :records) (get spec) keys))
 
+(defmethod sh/count-spec ::shelf [{:keys [shelving.trivial-edn/state]} spec]
+  (or (some-> @state (get :records) (get spec) keys count) 0))
+
 (defmethod sh/enumerate-rel ::shelf [{:keys [shelving.trivial-edn/state]} rel]
   (some-> @state (get :rels) (get rel) (get :pairs) seq))
+
+(defmethod sh/count-rel ::shelf [{:keys [shelving.trivial-edn/state schema]} rel]
+  (or (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) :pairs count) 0))
 
 (defmethod sh/relate-by-id ::shelf [{:keys [shelving.trivial-edn/state schema]} [from-spec to-spec :as rel] id]
   (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) (get from-spec) (get id) seq))
