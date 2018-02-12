@@ -41,6 +41,14 @@
           ::predicate
           :default)))))
 
+(defmethod walk-with-spec* :default [spec unknown obj before after]
+  (if (seq? unknown)
+    (throw (UnsupportedOperationException.
+            (format "Walking '%s' is not supported!"
+                    (first seq))))
+    (throw (UnsupportedOperationException.
+            (format "Could not walk unknown value '%s'" (pr-str unknown))))))
+
 (defmethod walk-with-spec* ::alias [spec alias obj before after]
   {:pre [(qualified-keyword? alias)]} 
   (as-> obj %
@@ -107,21 +115,6 @@
     (before spec %)
     (reduce (fn [o spec] (walk-with-spec before after spec o)) % kw-or-preds)
     (after spec %)))
-
-(defmethod walk-with-spec* `s/cat [& _]
-  (throw (UnsupportedOperationException. "Walking s/cat is not supported!")))
-
-(defmethod walk-with-spec* `s/* [& _]
-  (throw (UnsupportedOperationException. "Walking s/* is not supported!")))
-
-(defmethod walk-with-spec* `s/+ [& _]
-  (throw (UnsupportedOperationException. "Walking s/+ is not supported!")))
-
-(defmethod walk-with-spec* `s/? [& _]
-  (throw (UnsupportedOperationException. "Walking s/? is not supported!")))
-
-(defmethod walk-with-spec* `s/& [& _]
-  (throw (UnsupportedOperationException. "Walking s/& is not supported!")))
 
 (defmethod walk-with-spec* `s/every [spec [_ subspec & {:as opts}] obj before after]
   (as-> obj %
