@@ -77,6 +77,15 @@
            (into {})))
     (after spec %)))
 
+(defmethod walk-with-spec* `s/nilable [spec [_ subspec] obj before after]
+  (as-> obj %
+    (before spec %)
+    (do (s/assert spec %) %)
+    (if %
+      (walk-with-spec before after subspec %)
+      %)
+    (after spec %)))
+
 (defn walk-with-spec
   "An extensible postwalk over data via specs. Visits every spec-defined
   substructure of the given spec, applying both `before` and `after`
