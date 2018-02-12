@@ -143,6 +143,14 @@
     (into (empty obj) %)
     (after spec %)))
 
+(defmethod walk-with-spec* `s/tuple [spec [_ & specs] obj before after]
+  (as-> obj %
+    (before spec %)
+    (mapv (fn [o subspec]
+            (walk-with-spec before after subspec o))
+          % specs)
+    (after spec %)))
+
 (defmethod walk-with-spec* `s/map-of [spec [_ & args] obj before after]
   (walk-with-spec* spec (cons `s/every args) obj before after))
 
