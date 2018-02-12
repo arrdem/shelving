@@ -8,7 +8,8 @@
   {::sh/basic  (io/file "docs/basic.md")
    ::sh/schema (io/file "docs/schema.md")
    ::sh/rel    (io/file "docs/rel.md")
-   ::sh/util   (io/file "docs/helpers.md")})
+   ::sh/util   (io/file "docs/helpers.md")
+   ::sh/query  (io/file "docs/queries.md")})
 
 (defn ensure-trailing-newline [s]
   (if-not (.endsWith s "\n")

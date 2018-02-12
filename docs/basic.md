@@ -5,14 +5,14 @@
 The various shelving implementations define their own mechanisms for constructing
 configurations. These operations should be shared by all implementations.
 
-## [shelving.core/open](/src/main/clj/shelving/core.clj#L40)
+## [shelving.core/open](/src/main/clj/shelving/core.clj#L39)
  - `(open config)`
 
 Opens a shelf for reading or writing.
 
 Shelves must implement this method.
 
-## [shelving.core/flush](/src/main/clj/shelving/core.clj#L52)
+## [shelving.core/flush](/src/main/clj/shelving/core.clj#L51)
  - `(flush conn)`
 
 Flushes (commits) an open shelf.
@@ -21,7 +21,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/close](/src/main/clj/shelving/core.clj#L66)
+## [shelving.core/close](/src/main/clj/shelving/core.clj#L65)
  - `(close conn)`
 
 Closes an open shelf.
@@ -30,7 +30,7 @@ Shelves may implement this method.
 
 By default just flushes.
 
-## [shelving.core/get](/src/main/clj/shelving/core.clj#L81)
+## [shelving.core/get](/src/main/clj/shelving/core.clj#L80)
  - `(get conn spec record-id)`
 
 Fetches a record from a shelf by its spec and ID.
@@ -39,7 +39,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/put](/src/main/clj/shelving/core.clj#L93)
+## [shelving.core/put](/src/main/clj/shelving/core.clj#L92)
  - `(put conn spec val)`
  - `(put conn spec id val)`
 
@@ -53,7 +53,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/schema](/src/main/clj/shelving/core.clj#L115)
+## [shelving.core/schema](/src/main/clj/shelving/core.clj#L114)
  - `(schema conn)`
 
 Returns the schema record for a given connection.
