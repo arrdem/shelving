@@ -155,10 +155,11 @@
 (required! enumerate-spec)
 
 (defmulti count-spec
-  "Returns at least an upper bound on the cardinality of a given spec.
+  "Returns an upper bound on the cardinality of a given spec.
 
-  Implementations of this method should be near constant time and
-  should not require realizing the relation in question.
+  The bound should be as tight as possible if not
+  precise. Implementations of this method should be near constant time
+  and should not require realizing the spec in question.
 
   Shelves must implement this method.
 
@@ -537,10 +538,11 @@
 (required! enumerate-rel)
 
 (defmulti count-rel
-  "Returns at least an upper bound on the cardinality of a given relation.
+  "Returns an upper bound on the cardinality of a given relation.
 
-  Implementations of this method should be near constant time and
-  should not require realizing the relation in question.
+  The bound should be as tight as possible if not
+  precise. Implementations of this method should be near constant time
+  and should not require realizing the rel in question.
 
   Shelves must implement this method.
 
