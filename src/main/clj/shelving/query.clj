@@ -1,7 +1,7 @@
-(ns query
-  (:require [clojure.spec.alpha :as s]
-            [shelving.core :as sh]
-            [clojure.string :as str]))
+(ns shelving.query
+  (:require [clojure.string :as str]
+            [clojure.spec.alpha :as s]
+            [shelving.core :as sh]))
 
 (defn lvar?
   "Predicate. True if and only if the given object is a ?-prefixed
