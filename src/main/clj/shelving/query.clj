@@ -1,4 +1,8 @@
 (ns shelving.query
+  "A Datalog-style query implementation over Shelves."
+  {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
+   :license "Eclipse Public License 1.0",
+   :added   "0.0.0"}
   (:require [clojure.string :as str]
             [clojure.spec.alpha :as s]
             [shelving.core :as sh]))
@@ -6,6 +10,9 @@
 (defn lvar?
   "Predicate. True if and only if the given object is a ?-prefixed
   symbol representing a logic variable."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [obj]
   (and (symbol? obj)
        (.startsWith (name obj) "?")
@@ -20,6 +27,9 @@
 
   Throws `ExceptionInfo` if a clause becomes \"fully\" parameterized -
   that is the left and right hand sides are both constants."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [clauses params]
   {:pre [(every? lvar? (keys params))]}
   (mapv (fn [[lhs rel rhs :as clause]]
@@ -38,6 +48,9 @@
   in the connection's schema.
 
   Returns the unmodified sequence of clauses, or throws `ExceptionInfo`."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [clauses conn]
   (when conn
     (let [schema (sh/schema conn)]
@@ -60,6 +73,9 @@
   exists in the connection's schema.
 
   Returns the unmodified sequence of clauses, or throws `ExceptionInfo`."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [clauses conn]
   (when conn
     (let [schema (sh/schema conn)]
@@ -79,6 +95,9 @@
   Relating constants to constants is operationally meaningless.
 
   Returns the unmodified sequence of clauses, or throws `ExceptionInfo`."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [clauses conn]
   (when conn
     (doseq [[lhs rel rhs :as clause] clauses]
@@ -97,6 +116,9 @@
   Because relations are bidirectional with respect to their index
   behavior, normalize all relations to constants so that constants
   always occur on the right hand side of a relation."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [clauses]
   (mapv (fn [[lhs [from to :as rel] rhs :as clause]]
           (if (and (lvar? rhs) (not (lvar? lhs)))
@@ -121,6 +143,9 @@
   relations the set of clauses for which lvar is the lhs. Each clause
   and MAY have a `:dependencies` set, being the set of lvars occurring
   on the rhs of relations to the given lvar."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [clauses]
   (reduce (fn [acc [lhs [from to :as rel] rhs :as clause]]
             {:pre [(lvar? lhs)]}
@@ -138,6 +163,9 @@
   Throws `ExceptionInfo` if errors are detected.
 
   Otherwise returns the dependency map unmodified."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [dependency-map select-map]
   (let [missing-lvars (->> select-map
                            keys
@@ -156,6 +184,9 @@
   Throws `ExceptionInfo` if errors are detected.
 
   Otherwise returns the dependency map unmodified."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [dependency-map select-map]
   (doseq [[lvar select-spec] select-map
           :let               [analyzed-spec (-> (get dependency-map lvar) :spec)]]
@@ -169,6 +200,9 @@
 
 (defn topological-sort-lvars
   "Return a topological sort of the logic variables."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [dependency-map] 
   (loop [dependency-map dependency-map,
          resolved       #{},
@@ -212,6 +246,9 @@
   Produces a sequence of solutions, being mappings from the selected
   logic variables to their values at solutions to the given relation
   constraints."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [conn
    {:keys [params select where]
     :or   {params {}

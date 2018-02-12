@@ -58,3 +58,6 @@
       (spit f truncated)))
 
   (compile-docs category-map nss))
+
+(comment
+  (recompile-docs category-map '[shelving.core shelving.query]))
