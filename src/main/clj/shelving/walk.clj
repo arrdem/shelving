@@ -123,6 +123,13 @@
 (defmethod walk-with-spec* `s/& [& _]
   (throw (UnsupportedOperationException. "Walking s/& is not supported!")))
 
+(defmethod walk-with-spec* `s/coll-of [spec [_ subspec & {:as opts}] obj before after]
+  (as-> obj %
+    (before spec %)
+    (map (partial walk-with-spec before after subspec) %)
+    (into (empty obj) %)
+    (after spec %)))
+
 (defn walk-with-spec
   "An extensible postwalk over data via specs. Visits every spec-defined
   substructure of the given spec, applying both `before` and `after`
