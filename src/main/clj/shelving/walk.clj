@@ -96,6 +96,12 @@
           (after spec %))
         (recur subspecs*)))))
 
+(defmethod walk-with-spec* `s/and [spec [_ & kw-or-preds] obj before after]
+  (as-> obj %
+    (before spec %)
+    (reduce (fn [o spec] (walk-with-spec before after spec o)) % kw-or-preds)
+    (after spec %)))
+
 (defn walk-with-spec
   "An extensible postwalk over data via specs. Visits every spec-defined
   substructure of the given spec, applying both `before` and `after`
