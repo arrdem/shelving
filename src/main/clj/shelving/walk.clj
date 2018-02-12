@@ -86,6 +86,16 @@
       %)
     (after spec %)))
 
+(defmethod walk-with-spec* `s/or [spec [_ & tag-specs] obj before after]
+  (loop [[subspec & subspecs* :as li] (map second (partition 2 tag-specs))]
+    (when li
+      (if (s/valid? subspec obj)
+        (as-> obj %
+          (before spec %)
+          (walk-with-spec before after subspec %)
+          (after spec %))
+        (recur subspecs*)))))
+
 (defn walk-with-spec
   "An extensible postwalk over data via specs. Visits every spec-defined
   substructure of the given spec, applying both `before` and `after`
