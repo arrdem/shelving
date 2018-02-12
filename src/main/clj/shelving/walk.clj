@@ -133,6 +133,19 @@
 (defmethod walk-with-spec* `s/coll-of [spec [_ subspec & {:as opts}] obj before after]
   (walk-with-spec* spec [`s/every subspec] obj before after))
 
+(defmethod walk-with-spec* `s/every-kv [spec [_ k-spec v-spec & {:as opts}] obj before after]
+  (as-> obj %
+    (before spec %)
+    (map (fn [[k v]]
+           [(walk-with-spec before after k-spec k)
+            (walk-with-spec before after v-spec v)])
+         %)
+    (into (empty obj) %)
+    (after spec %)))
+
+(defmethod walk-with-spec* `s/map-of [spec [_ & args] obj before after]
+  (walk-with-spec* spec (cons `s/every args) obj before after))
+
 (defn walk-with-spec
   "An extensible postwalk over data via specs. Visits every spec-defined
   substructure of the given spec, applying both `before` and `after`
