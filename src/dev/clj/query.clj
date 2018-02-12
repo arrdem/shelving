@@ -237,6 +237,14 @@
                    ;; More preconditions which are easier with dependency data
                    (check-select-exist! select)
                    (check-select-specs! select))
+
+        ;; This is a little tricky. The topological sort is stable with respect to the seq order of
+        ;; the keys in the map. That is, the first key whose dependencies are satisfied is the key
+        ;; which is selected. Using a normal Clojure map which sorts by key hashes, this results in
+        ;; a correct topsort. However by first inserting all the dependency relations into a sorted
+        ;; map by spec cardinality, we can ensure that dependees of equal order are sorted by their
+        ;; database cardinality thus minimizing the size of intersection scans that need to be
+        ;; resident at any given point in time.
         ordering (as-> depmap %
                    (map (fn [[k {:keys [dependencies]}]] [k dependencies]) %)
                    (into (sorted-map-by #(compare (sh/count-spec conn %2)
