@@ -108,6 +108,21 @@
     (reduce (fn [o spec] (walk-with-spec before after spec o)) % kw-or-preds)
     (after spec %)))
 
+(defmethod walk-with-spec* `s/cat [& _]
+  (throw (UnsupportedOperationException. "Walking s/cat is not supported!")))
+
+(defmethod walk-with-spec* `s/* [& _]
+  (throw (UnsupportedOperationException. "Walking s/* is not supported!")))
+
+(defmethod walk-with-spec* `s/+ [& _]
+  (throw (UnsupportedOperationException. "Walking s/+ is not supported!")))
+
+(defmethod walk-with-spec* `s/? [& _]
+  (throw (UnsupportedOperationException. "Walking s/? is not supported!")))
+
+(defmethod walk-with-spec* `s/& [& _]
+  (throw (UnsupportedOperationException. "Walking s/& is not supported!")))
+
 (defn walk-with-spec
   "An extensible postwalk over data via specs. Visits every spec-defined
   substructure of the given spec, applying both `before` and `after`
