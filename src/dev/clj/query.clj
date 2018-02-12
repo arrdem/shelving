@@ -1,5 +1,7 @@
 (ns query
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [shelving.core :as sh]
+            [clojure.string :as str]))
 
 (defn lvar?
   "Predicate. True if and only if the given object is a ?-prefixed
@@ -28,14 +30,63 @@
                           (get params rhs rhs)
                           rhs)
                 clause* [lhs* rel rhs*]]
-            (when-not (or (lvar? lhs*) (lvar? rhs*))
-              (throw (ex-info (format "Parameterized clause '%s' contains no logic variables!"
-                                      clause*)
-                              {:params params
-                               :input  clause
-                               :output clause*})))
             clause*))
         clauses))
+
+(defn check-specs!
+  "Given a sequence of where clauses, check that every used spec exists
+  in the connection's schema.
+
+  Returns the unmodified sequence of clauses, or throws `ExceptionInfo`."
+  [clauses conn]
+  (when conn
+    (let [schema (sh/schema conn)]
+      (doseq [[lhs rel rhs :as clause] clauses]
+        (when-not (sh/has-spec? schema lhs)
+          (throw (ex-info (format "Clause '%s' makes use of unknown spec '%s'!"
+                                  clause lhs)
+                          {:schema schema
+                           :spec   lhs})))
+
+        (when-not (sh/has-spec? schema rhs)
+          (throw (ex-info (format "Clause '%s' makes use of unknown spec '%s'!"
+                                  clause rhs)
+                          {:schema schema
+                           :spec   rhs}))))))
+  clauses)
+
+(defn check-rels!
+  "Given a sequence of where clauses, check that every used relation
+  exists in the connection's schema.
+
+  Returns the unmodified sequence of clauses, or throws `ExceptionInfo`."
+  [clauses conn]
+  (when conn
+    (let [schema (sh/schema conn)]
+      (doseq [[lhs rel rhs :as clause] clauses]
+        (when-not (sh/has-rel? schema rel)
+          (throw (ex-info (format "Clause '%s' makes use of unknown relation '%s!"
+                                  clause rel)
+                          {:schema schema
+                           :clause clause
+                           :rel    rel}))))))
+  clauses)
+
+(defn check-constant-clauses!
+  "Given a sequence of where clauses, check that every clause relates either logic variables to
+  logic variables, or logic variables to constants.
+
+  Relating constants to constants is operationally meaningless.
+
+  Returns the unmodified sequence of clauses, or throws `ExceptionInfo`."
+  [clauses conn]
+  (when conn
+    (doseq [[lhs rel rhs :as clause] clauses]
+      (when-not (or (lvar? lhs) (lvar? rhs))
+        (throw (ex-info (format "Parameterized clause '%s' contains no logic variables!"
+                                clause)
+                        {:clause clause})))))
+  clauses)
 
 (defn normalize-where-constants
   "Where clauses may in the three forms:
@@ -66,19 +117,74 @@
 
   Returns a map of lvar symbols to \"clause\" structures.  Each clause
   structure MUST have a `:spec` being the spec from which lvar is
-  drawn. Each clause and MAY have `:clauses`, being the set of clauses
-  for which lvar is the lhs. Each clause and MAY have a
-  `:dependencies` set, being the set of lvars occurring on the rhs of
-  relations to the given lvar."
+  drawn. Each clause and MAY have `:clauses`, being a map from
+  relations the set of clauses for which lvar is the lhs. Each clause
+  and MAY have a `:dependencies` set, being the set of lvars occurring
+  on the rhs of relations to the given lvar."
   [clauses]
   (reduce (fn [acc [lhs [from to :as rel] rhs :as clause]]
             {:pre [(lvar? lhs)]}
             (cond-> acc
-              true        (update-in [lhs :clauses] (fnil conj #{}) clause)
+              true        (update-in [lhs :clauses rel] (fnil conj #{}) clause)
               true        (update-in [lhs :spec] put-spec! lhs from)
               (lvar? rhs) (update-in [rhs :spec] put-spec! rhs to)
               (lvar? rhs) (update-in [lhs :dependencies] (fnil conj #{}) rhs)))
           {} clauses))
+
+(defn check-select-exist!
+  "Checks that all logic variables designated for selection exist within
+  the query.
+
+  Throws `ExceptionInfo` if errors are detected.
+
+  Otherwise returns the dependency map unmodified."
+  [dependency-map select-map]
+  (let [missing-lvars (->> select-map
+                           keys
+                           (keep #(when-not (contains? dependency-map %) %))
+                           doall
+                           seq)]
+    (when missing-lvars
+      (throw (ex-info "Found undefined logic variables!"
+                      {:lvars missing-lvars}))))
+  dependency-map)
+
+(defn check-select-specs!
+  "Checks that all logic variables designated for selection have their
+  ascribed specs within the query.
+
+  Throws `ExceptionInfo` if errors are detected.
+
+  Otherwise returns the dependency map unmodified."
+  [dependency-map select-map]
+  (doseq [[lvar select-spec] select-map
+          :let               [analyzed-spec (-> (get dependency-map lvar) :spec)]]
+    (when-not (= select-spec analyzed-spec)
+      (throw (ex-info (format "lvar spec conflict detected! lvar '%s' seems to have spec '%s', but spec '%s' was requested."
+                              lvar analyzed-spec select-spec)
+                      {:lvar          lvar
+                       :select-spec   select-spec
+                       :analyzed-spec analyzed-spec}))))
+  dependency-map)
+
+(defn topological-sort-lvars
+  "Return a topological sort of the logic variables."
+  [dependency-map] 
+  (loop [dependency-map dependency-map,
+         resolved       #{},
+         result         []]
+    (if (empty? dependency-map)
+      result
+      (if-let [lvar (some (fn [[lvar dependencies]]
+                            (if (empty? (remove resolved dependencies))
+                              lvar))
+                          dependency-map)]
+        (recur (dissoc dependency-map lvar)
+               (conj resolved lvar)
+               (conj result lvar))
+        (throw (Exception.
+                (str "Cyclic dependency: "
+                     (str/join ", " (map :name (keys dependency-map))))))))))
 
 (defn q
   "Cribbing from Datomic's q operator here.
@@ -112,15 +218,36 @@
            select {}
            where  []}
     :as   query}]
-  (-> where
-      (bind-params params)
-      normalize-where-constants
-      ;; Trivially deduplicate just in case
-      set seq
-      compile-dependency-map))
+  (let [depmap (-> where
+                   ;; Bind the given parameters to their logic variables
+                   (bind-params params)
+
+                   ;; Apply preconditions
+                   (check-constant-clauses! conn)
+                   (check-specs! conn)
+                   (check-rels! conn)
+
+                   ;; Normalize all constants to the rhs
+                   normalize-where-constants
+
+                   ;; Trivially deduplicate just in case
+                   set seq
+                   compile-dependency-map
+
+                   ;; More preconditions which are easier with dependency data
+                   (check-select-exist! select)
+                   (check-select-specs! select))
+        ordering (as-> depmap %
+                   (map (fn [[k {:keys [dependencies]}]] [k dependencies]) %)
+                   (into (sorted-map-by #(compare (sh/count-spec conn %2)
+                                                  (sh/count-spec conn %1)))
+                         %)
+                   (topological-sort-lvars %))]
+    ordering))
 
 (comment
   (def *conn nil)
+
   ;; All packages in the org.clojure group
   (q *conn
      {:select '{?package :org.maven/package}
