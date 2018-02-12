@@ -16,7 +16,8 @@
                       "src/test/cljc"]
 
   :resource-paths ["src/main/resources"]
-  :profiles {:dev {:dependencies      [[org.clojure/test.check "0.10.0-alpha2"]]
+  :profiles {:dev {:dependencies      [[org.clojure/test.check "0.10.0-alpha2"]
+                                       [me.arrdem/detritus "0.3.2"]]
                    :source-paths      ["src/dev/clj"
                                        "src/dev/clj"]
                    :java-source-paths ["src/dev/jvm"]
