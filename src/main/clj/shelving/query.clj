@@ -220,6 +220,38 @@
                 (str "Cyclic dependency: "
                      (str/join ", " (map :name (keys dependency-map))))))))))
 
+(defn build-plan
+  "Given a dependency map between logic variables, a topsort order on
+  the logic variables and a set of lvars to select, produce and return
+  an evaluation plan for the query.
+
+  Returns a query plan as a tree of records."
+  [depmap topsort-lvar-seq select]
+  ;; Scans are for producing bindings out of a spec by ID
+  ;;
+  ;; {:op :scan
+  ;;  :spec spec
+  ;;  :as gensym}
+  ;;
+  ;; Filters are for shrinking down cardinality
+  ;;
+  ;; {:op :filter
+  ;;  :rel rel
+  ;;  :from sym
+  ;;  :to sym | const
+  ;;  :as gensym}
+  ;;
+  ;; Do I need joins? Are they what I'm calling filters? Need to read prior art.
+  ;;
+  ;; Are there any other cases?
+  )
+
+(defn compile-plan
+  "Given a query plan, compile it to a directly executable stack of functions."
+  [query-plan]
+  ;; And now for the tricky bit
+  )
+
 (defn q
   "Cribbing from Datomic's q operator here.
 
