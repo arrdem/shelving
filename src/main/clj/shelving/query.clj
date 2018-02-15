@@ -319,8 +319,11 @@
                    (into (sorted-map-by #(compare (sh/count-spec conn %2)
                                                   (sh/count-spec conn %1)))
                          %)
-                   (topological-sort-lvars %))]
-    ordering))
+                   (topological-sort-lvars %))
+
+        select-lvars (set (keys select))]
+
+    (compile-dependency-map depmap ordering select-lvars)))
 
 (comment
   (def *conn nil)
