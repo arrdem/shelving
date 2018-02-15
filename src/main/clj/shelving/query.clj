@@ -203,7 +203,7 @@
   {:stability  :stability/unstable
    :categories #{::sh/query}
    :added      "0.0.0"}
-  [dependency-map] 
+  [dependency-map]
   (loop [dependency-map dependency-map,
          resolved       #{},
          result         []]
