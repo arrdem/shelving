@@ -5,7 +5,8 @@
    :added   "0.0.0"}
   (:require [clojure.string :as str]
             [clojure.spec.alpha :as s]
-            [shelving.core :as sh]))
+            [shelving.core :as sh]
+            [detritus.sequences :refer [separate]]))
 
 (defn lvar?
   "Predicate. True if and only if the given object is a ?-prefixed
@@ -226,25 +227,95 @@
   an evaluation plan for the query.
 
   Returns a query plan as a tree of records."
-  [depmap topsort-lvar-seq select]
-  ;; Scans are for producing bindings out of a spec by ID
+  [conn depmap ordering]
+  ;; Scans are for producing bindings out of a spec by ID Can scan a whole spec, producing the set
+  ;; of its IDs.
   ;;
-  ;; {:op :scan
-  ;;  :spec spec
-  ;;  :as gensym}
+  ;;     {:type ::scan-spec
+  ;;      :spec spec}
   ;;
-  ;; Filters are for shrinking down cardinality
+  ;; Or can scan a relation at a constant, producing the opposing set of IDs.
   ;;
-  ;; {:op :filter
-  ;;  :rel rel
-  ;;  :from sym
-  ;;  :to sym | const
-  ;;  :as gensym}
+  ;;     {:type ::scan-rel
+  ;;      :rel rel
+  ;;      :id  uuid}
   ;;
-  ;; Do I need joins? Are they what I'm calling filters? Need to read prior art.
+  ;; We can also project from one set through a relation to another set of opposing IDs.
   ;;
-  ;; Are there any other cases?
-  )
+  ;;     {:type ::project
+  ;;      :rel  rel
+  ;;      :left qvar}
+  ;;
+  ;; Joins don't really exist, they're intersections of sets.
+  ;;
+  ;;     {:type ::intersect
+  ;;      :left qvar
+  ;;      :right qvar}
+  ;;
+  ;; A query plan is a sequence of pairs `[lvar op]` where an op is one of the structures above and
+  ;; the logic variable is the term for the product of that operation.
+
+  (mapcat (fn [lvar]
+            (let [{:keys [clauses spec] :as lvar-deps} (get depmap lvar)
+
+                  clauses (mapcat #(get clauses %)
+                                  (sort-by #(sh/count-rel conn %)
+                                           (keys clauses)))
+
+                  binds (concat (repeatedly (if-not clauses 0
+                                                    (dec (count clauses)))
+                                            #(gensym "?q_"))
+                                [lvar])]
+              (if (empty? clauses)
+                ;; emit a simple scan
+                [[lvar {:type ::scan-spec
+                        :spec spec}]]
+
+                ;; compile all the clauses
+                (mapcat (fn [[lhs [from-spec to-spec :as rel] rhs :as clause] from to]
+                          (let [im1 (gensym "?q_")]
+                            (cond (and from (not (lvar? rhs)))
+                                  [[im1
+                                    {:type ::scan-rel
+                                     :rel  [to-spec from-spec]
+                                     :id   (-> conn sh/schema (sh/id-for-record to-spec rhs))}]
+                                   [to
+                                    {:type  ::intersect
+                                     :left  from
+                                     :right im1}]]
+
+                                  (and from (lvar? rhs))
+                                  [[im1
+                                    {:type ::project
+                                     :rel  [to-spec from-spec]
+                                     :left rhs}]
+                                   [to
+                                    {:type  ::intersect
+                                     :left  from
+                                     :right im1}]]
+
+                                  (and (not from) (not (lvar? rhs)))
+                                  [[to
+                                    {:type ::scan-rel
+                                     :rel  [to-spec from-spec]
+                                     :id   (-> conn sh/schema (sh/id-for-record to-spec rhs))}]]
+
+                                  (and (not from) (lvar? rhs))
+                                  ;; This is the case of a fully unconstrained logic variable.
+                                  [[im1
+                                    {:type ::scan-spec
+                                     :spec to-spec}]
+                                   [to
+                                    {:type ::project
+                                     :rel  [to-spec from-spec]
+                                     :left im1}]]
+
+                                  :else (throw (IllegalStateException.)))))
+
+                        clauses
+                        (cons nil (butlast binds))
+                        binds))))
+          ordering))
 
 (defn compile-plan
   "Given a query plan, compile it to a directly executable stack of functions."
@@ -299,7 +370,7 @@
                    ;; Normalize all constants to the rhs
                    normalize-where-constants
 
-                   ;; Trivially deduplicate just in case
+                   ;; Trivially reduplicate just in case
                    set seq
                    compile-dependency-map
 
@@ -315,26 +386,55 @@
         ;; database cardinality thus minimizing the size of intersection scans that need to be
         ;; resident at any given point in time.
         ordering (as-> depmap %
-                   (map (fn [[k {:keys [dependencies]}]] [k dependencies]) %)
-                   (into (sorted-map-by #(compare (sh/count-spec conn %2)
-                                                  (sh/count-spec conn %1)))
+                   (map (fn [[k {:keys [dependencies] :or {dependencies #{}}}]]
+                          [k dependencies]) %)
+                   (into (sorted-map-by #(as-> (compare (sh/count-spec conn %2)
+                                                        (sh/count-spec conn %1)) $
+                                           (if (= $ 0)
+                                             (compare %1 %2) $)))
                          %)
-                   (topological-sort-lvars %))
+                   (topological-sort-lvars %))]
 
-        select-lvars (set (keys select))]
-
-    (compile-dependency-map depmap ordering select-lvars)))
+    (build-plan conn depmap ordering)))
 
 (comment
-  (def *conn nil)
+  (require '[shelving.trivial-edn :refer [->TrivialEdnShelf]])
+
+  (s/def ::foo string?)
+  (s/def ::qux pos-int?)
+  (s/def :query.bar/type #{::bar})
+  (s/def ::bar
+    (s/keys :req-un [::foo
+                     ::qux
+                     :query.bar/type]))
+
+  (def schema
+    (-> sh/empty-schema
+        (sh/value-spec ::foo)
+        (sh/value-spec ::qux)
+        (sh/value-spec ::bar)
+        (sh/spec-rel [::bar ::foo] :foo)
+        (sh/spec-rel [::bar ::qux] :qux)))
+
+  (def *conn
+    (-> (->TrivialEdnShelf schema "target/query.edn"
+                           :flush-after-write true
+                           :load true)
+        (sh/open)))
+
+  (sh/put *conn ::bar {:type ::bar :foo "a" :qux 1})
+  (sh/put *conn ::bar {:type ::bar :foo "a" :qux 2})
+  (sh/put *conn ::bar {:type ::bar :foo "a" :qux 3})
+  (sh/put *conn ::bar {:type ::bar :foo "b" :qux 1})
+  (sh/put *conn ::bar {:type ::bar :foo "c" :qux 1})
 
   ;; All packages in the org.clojure group
   (q *conn
-     {:select '{?package :org.maven/package}
-      :where  '[[?package [:org.maven/package :org.maven/group] "org.clojure"]]})
+     {:select '{?bar ::bar}
+      :where  '[[?bar [::bar ::foo] "a"]]})
 
   ;; All groups which have a package at 1.0.0
   (q *conn
-     {:select '{?group :org.maven/group}
-      :where  '[[?group [:org.maven/group :org.maven/package] ?package]
-                [?package [:org.maven/package :org.maven/version] "1.0.0"]]}))
+     {:select '{?qux ::qux}
+      :where  '[[?bar [::bar ::foo] "a"]
+                [?bar [::bar ::qux] ?qux]]}))
