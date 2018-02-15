@@ -54,18 +54,18 @@
   [clauses conn]
   (when conn
     (let [schema (sh/schema conn)]
-      (doseq [[lhs rel rhs :as clause] clauses]
-        (when-not (sh/has-spec? schema lhs)
+      (doseq [[lhs [from to :as rel] rhs :as clause] clauses]
+        (when-not (sh/has-spec? schema from)
           (throw (ex-info (format "Clause '%s' makes use of unknown spec '%s'!"
-                                  clause lhs)
+                                  clause from)
                           {:schema schema
-                           :spec   lhs})))
+                           :spec   from})))
 
-        (when-not (sh/has-spec? schema rhs)
+        (when-not (sh/has-spec? schema to)
           (throw (ex-info (format "Clause '%s' makes use of unknown spec '%s'!"
-                                  clause rhs)
+                                  clause to)
                           {:schema schema
-                           :spec   rhs}))))))
+                           :spec   to}))))))
   clauses)
 
 (defn check-rels!
