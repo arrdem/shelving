@@ -20,7 +20,8 @@
 
 (defn compile-docs [category-map nss]
   (let [vars (for [ns              nss
-                   :let            [ns (if-not (instance? clojure.lang.Namespace ns)
+                   :let            [_ (require ns :reload)
+                                    ns (if-not (instance? clojure.lang.Namespace ns)
                                          (the-ns ns) ns)]
                    [sym maybe-var] (ns-publics ns)
                    :when           (instance? clojure.lang.Var maybe-var)]
