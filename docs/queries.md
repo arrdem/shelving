@@ -2,8 +2,8 @@
 
 The searching API and helpers designed to support it.
 
-## [shelving.query/q****](/src/main/clj/shelving/query.clj#L11)
- - `(q**** conn {:keys [params select where], :or {params {}, select {}, where []}, :as query})`
+## [shelving.query/q****](shelving/query.clj#L13)
+ - `(q**** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
 
@@ -13,8 +13,8 @@ Given a query and a connection, builds and returns the dependency map on the que
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q***](/src/main/clj/shelving/query.clj#L49)
- - `(q*** conn {:keys [params select where], :or {params {}, select {}, where []}, :as query})`
+## [shelving.query/q***](shelving/query.clj#L44)
+ - `(q*** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
 
@@ -24,8 +24,8 @@ Given a query and a connection, builds and returns both the fully analyzed logic
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q**](/src/main/clj/shelving/query.clj#L84)
- - `(q** conn {:keys [params select where], :or {params {}, select {}, where []}, :as query})`
+## [shelving.query/q**](shelving/query.clj#L80)
+ - `(q** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
 
@@ -35,8 +35,8 @@ Given a query and a connection, builds and returns a sequence of plan "clauses" 
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q*](/src/main/clj/shelving/query.clj#L101)
- - `(q* conn {:keys [params select where], :or {params {}, select {}, where []}, :as query})`
+## [shelving.query/q*](shelving/query.clj#L97)
+ - `(q* conn query)`
 
 **UNSTABLE**: This API will probably change in the future
 
@@ -46,14 +46,12 @@ Builds and returns the list form of a function implementing the given datalog qu
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q](/src/main/clj/shelving/query.clj#L117)
- - `(q conn {:keys [params select where], :or {params {}, select {}, where []}, :as query})`
+## [shelving.query/q](shelving/query.clj#L116)
+ - `(q conn query)`
 
 **UNSTABLE**: This API will probably change in the future
 
-Cribbing from Datomic's q operator here.
-
-`select` is a mapping of {symbol spec} pairs identifying logic variables to be selected, and the specs from which they are to be selected.
+Cribbing from Datomic's q operator here.  `find` is a mapping of {symbol spec} pairs identifying logic variables to be selected, and the specs from which they are to be selected.
 
 `where` is a sequence of rel "constraint" triples. Constraint triples must fit one of three forms: - `[lvar  rel-id lvar]` - `[lvar  rel-id const]` - `[const rel-id lvar]`
 

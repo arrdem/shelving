@@ -36,11 +36,11 @@
 (comment
   ;; All packages in the org.clojure group
   (q *conn
-     {:select '{?bar ::bar}
-      :where  '[[?bar [::bar ::foo] "a"]]})
+     '[:find  [?bar]
+       :where [[?bar [::bar ::foo] "a"]]])
 
   ;; All groups which have a package at 1.0.0
   (q *conn
-     {:select '{?qux ::qux}
-      :where  '[[?bar [::bar ::foo] "a"]
-                [?bar [::bar ::qux] ?qux]]}))
+     '[:find [[:from ::qux ?qux]]
+       :where [[?bar [::bar ::foo] "a"]
+               [?bar [::bar ::qux] ?qux]]]))

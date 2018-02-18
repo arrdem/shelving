@@ -103,27 +103,30 @@
   ;; the logic variable is the term for the product of that operation.
 
   (as-> ordering %
-    (map (fn [lvar]
-           (let [{:keys [clauses spec] :as lvar-deps} (get depmap lvar)
+    (keep (fn [lvar]
+            (let [{:keys [in? clauses spec]
+                   :or   {in?     false
+                          clauses []}
+                   :as   lvar-deps} (get depmap lvar)]
+              (when-not in?
+                (let [clauses (mapcat #(get clauses %)
+                                      (sort-by #(sh/count-rel conn %)
+                                               (keys clauses)))
 
-                 clauses (mapcat #(get clauses %)
-                                 (sort-by #(sh/count-rel conn %)
-                                          (keys clauses)))
+                      binds (concat (repeatedly (if-not clauses 0
+                                                        (dec (count clauses)))
+                                                #(gensym "?q_"))
+                                    [lvar])]
+                  [(gensym (str (name lvar) "_"))
+                   (if (empty? clauses)
+                     ;; emit a simple scan
+                     [[lvar {:type ::scan-spec
+                             :spec spec}]]
 
-                 binds (concat (repeatedly (if-not clauses 0
-                                                   (dec (count clauses)))
-                                           #(gensym "?q_"))
-                               [lvar])]
-             [lvar
-              (if (empty? clauses)
-                ;; emit a simple scan
-                [[lvar {:type ::scan-spec
-                        :spec spec}]]
-
-                ;; compile all the clauses
-                (mapcat (partial build-clause conn)
-                        clauses
-                        (cons nil (butlast binds))
-                        binds))]))
-         %)
+                     ;; compile all the clauses
+                     (mapcat (partial build-clause conn)
+                             clauses
+                             (cons nil (butlast binds))
+                             binds))]))))
+          %)
     (into [] %)))

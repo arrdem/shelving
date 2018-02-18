@@ -49,7 +49,7 @@
              #_(println ~(str "DEBUG " (name lvar) " " (pr-str clause) "]\n        ") ~'state)
              (let [l# (get ~'state '~left-var)]
                (when (= l# (get ~'state '~right-var))
-                 (merge ~'state {'~lvar l#})))))))
+                 (assoc ~'state '~lvar l#)))))))
 
 (defn compile-clause
   "Consumes a clause - being a sequence of scans, projects and
@@ -73,16 +73,20 @@
   {:stability  :stability/unstable
    :categories #{::sh/query}
    :added      "0.0.0"}
-  [conn query-clauses select-lvar-specs]
+  [conn {:keys [find in depmap plan]}]
   ;; And now for the tricky bit
-  `(fn [~'conn ~'select-lvar-specs]
-     (fn [~'states]
-       (let [~@(mapcat (fn [[lvar :as clause]]
-                         [lvar (compile-clause clause)]) query-clauses)]
-         (->> ~'states ~@(map first query-clauses)
-              (map (fn [state#]
-                     (select-keys state# (keys ~'select-lvar-specs))))
-              (map (fn [state#]
-                     (->> (for [[lvar# spec#] ~'select-lvar-specs]
-                            [lvar# (sh/get ~'conn spec# (get state# lvar#))])
-                          (into {}))))))))) 
+  `(fn [~'conn ~@in]
+     (let [~@(mapcat (fn [[lvar :as clause]]
+                       [lvar (compile-clause clause)])
+                     plan)
+           ~'schema (sh/schema ~'conn)]
+       (->> [~(->> (for [l in]
+                     `['~l (sh/id-for-record ~'schema ~(get-in depmap [l :spec]) ~l)])
+                   (into {}))]
+            ~@(map first plan)
+            (map (fn [state#]
+                   (->> (for [[lvar# spec#] '~(mapv (fn [lvar]
+                                                      [lvar (get-in depmap [lvar :spec])])
+                                                    find)]
+                          [lvar# (sh/get ~'conn spec# (get state# lvar#))])
+                        (into {}))))))))

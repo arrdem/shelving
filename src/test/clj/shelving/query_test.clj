@@ -22,7 +22,7 @@
       (sh/spec-rel [::bar ::qux] :qux)))
 
 (t/deftest examples-test 
-  (let [*conn (-> (->TrivialEdnShelf schema "target/query.edn"
+  (let [*conn (-> (->TrivialEdnShelf schema "target/query-test.edn"
                                      :flush-after-write false
                                      :load false)
                   (sh/open))]
@@ -35,38 +35,38 @@
 
     (t/testing "Testing unconstrained selects"
       (t/is (= #{"a" "b" "c"}
-               (->> (q *conn '{:select {?foo ::foo}})
+               (->> (q *conn '[:find [[:from ::foo ?foo]]])
                     (map '?foo)
                     set)))
 
       (t/is (= #{1 2 3}
-               (->> (q *conn '{:select {?qux ::qux}})
+               (->> (q *conn '[:find [[:from ::qux ?qux]]])
                     (map '?qux)
                     set))))
 
     (t/testing "Testing using ::bar as a pivot table between ::foo and ::qux"
-      (let [prepared-q '{:select {?foo ::foo}
-                         :where  [[?bar [::bar ::qux] ?b]
-                                  [?bar [::bar ::foo] ?foo]]}]
+      (let [prepared-q '[:find  [?foo]
+                         :in    [?b]
+                         :where [[?bar [::bar ::qux] ?b]
+                                 [?bar [::bar ::foo] ?foo]]]
+            q-fn       (q *conn prepared-q)]
         (doseq [[b s]
                 [[3 #{"a"}]
                  [2 #{"a"}]
                  [1 #{"a" "b" "c"}]]]
           (t/is (= s
-                   (->> (q *conn (assoc-in prepared-q [:params '?b] b))
-                        (map '?foo)
-                        set)))))
+                   (->> (q-fn b) (map '?foo) set)))))
 
       (t/is (= #{1}
                (->> (q *conn
-                       {:select '{?qux ::qux}
-                        :where  '[[?bar [::bar ::qux] ?qux]
-                                  [?bar [::bar ::foo] "b"]]})
+                       '[:find  [?qux]
+                         :where [[?bar [::bar ::qux] ?qux]
+                                 [?bar [::bar ::foo] "b"]]])
                     (map '?qux)
                     set)))
 
       (t/is (= 3
                (->> (q *conn
-                       {:select '{?bar ::bar}
-                        :where  '[[?bar [::bar ::qux] 1]]})
+                       '[:find  [?bar]
+                         :where [[?bar [::bar ::qux] 1]]])
                     count))))))

@@ -4,9 +4,11 @@
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:require [shelving.core :as sh]
-            [shelving.query.analyzer :as s.q.a]
-            [shelving.query.compiler :as s.q.c]
-            [shelving.query.planner :as s.q.p]))
+            [shelving.query.parser :as parser]
+            [shelving.query.analyzer :as analyzer]
+            [shelving.query.compiler :as compiler]
+            [shelving.query.planner :as planner]
+            [clojure.spec.alpha :as s]))
 
 (defn q****
   "Published implementation detail.
@@ -20,32 +22,24 @@
   {:stability  :stability/unstable
    :categories #{::sh/query}
    :added      "0.0.0"}
-  [conn
-   {:keys [params select where]
-    :or   {params {}
-           select {}
-           where  []}
-    :as   query}]
-  (-> where
-      ;; Bind the given parameters to their logic variables
-      (s.q.a/bind-params params)
+  [conn query]
+  {:pre [(s/valid? ::parser/datalog query)]}
+  (as-> (s/conform ::parser/datalog query) %
+    ;; Collect initially available spec information
+    (analyzer/normalize-find-clauses %)
+    (analyzer/normalize-in-clauses %)
+    (analyzer/normalize-where-holes %)
 
-      ;; Apply preconditions
-      (s.q.a/check-constant-clauses! conn)
-      (s.q.a/check-specs! conn)
-      (s.q.a/check-rels! conn)
+    ;; Propagate available spec information, filling holes
+    (analyzer/fill-holes %)
 
-      ;; Normalize all constants to the rhs
-      s.q.a/normalize-where-constants
+    ;; Apply preconditions before we go farther
+    (analyzer/check-holes! %)
+    (analyzer/check-specs! % conn)
+    (analyzer/check-rels! % conn)
 
-      ;; Trivially deduplicate
-      set
-      ;; Pin selected lvars, build the dependency map & minimize it
-      (s.q.a/dataflow-optimize select)
-
-      ;; More preconditions which are easier with dependency data
-      (s.q.a/check-select-exist! select)
-      (s.q.a/check-select-specs! select)))
+    ;; Apply the dataflow analyzer & optimizer
+    (analyzer/dataflow-optimize %)))
 
 (defn q***
   "Published implementation detail.
@@ -68,19 +62,20 @@
   ;; cardinality, we can ensure that dependees of equal order are sorted by their database
   ;; cardinality thus minimizing the size of intersection scans that need to be resident at any
   ;; given point in time.
-  (let [depmap   (q**** conn query)
-        ordering (as-> depmap %
-                   (map (fn [[k {:keys [dependencies]
-                                 :or   {dependencies #{}}}]]
-                          [k dependencies]) %)
-                   (into (sorted-map-by #(as-> (compare (sh/count-spec conn %2)
-                                                        (sh/count-spec conn %1)) $
-                                           (if (= $ 0)
-                                             (compare %1 %2) $)))
-                         %)
-                   (s.q.a/topological-sort-lvars %))]
-    {:depmap   depmap
-     :ordering ordering}))
+  (let [{:keys [depmap] :as query} (q**** conn query)
+        ordering                   (as-> depmap %
+                                     (map (fn [[k {:keys [dependencies]
+                                                   :or   {dependencies #{}}}]]
+                                            [k dependencies]) %)
+                                     (into (sorted-map-by #(as-> (compare (sh/count-spec conn %2)
+                                                                          (sh/count-spec conn %1)) $
+                                                             (if (= $ 0)
+                                                               (compare %1 %2) $)))
+                                           %)
+                                     (analyzer/topological-sort-lvars %))]
+    (merge query
+           {:depmap   depmap
+            :ordering ordering})))
 
 (defn q**
   "Published implementation detail.
@@ -96,8 +91,8 @@
    :added      "0.0.0"
    :arglists   (:arglists (meta #'q***))}
   [conn query]
-  (let [{:keys [depmap ordering]} (q*** conn query)]
-    (s.q.p/build-plan conn depmap ordering)))
+  (let [{:keys [depmap ordering] :as query} (q*** conn query)]
+    (assoc query :plan (planner/build-plan conn depmap ordering))))
 
 (defn q*
   "Published implementation detail.
@@ -111,14 +106,17 @@
    :categories #{::sh/query}
    :added      "0.0.0"
    :arglists   (:arglists (meta #'q**))}
-  [conn {:keys [select] :as query}] 
-  (as-> (q** conn query) %
-    (s.q.c/compile-plan conn % select)))
+  [conn query]
+  (let [query (q** conn query)
+        form  (compiler/compile-plan conn query)]
+    (merge query
+           {:form form
+            :fn   (eval form)})))
 
 (defn q
   "Cribbing from Datomic's q operator here.
-
-  `select` is a mapping of {symbol spec} pairs identifying logic
+  
+  `find` is a mapping of {symbol spec} pairs identifying logic
   variables to be selected, and the specs from which they are to be
   selected.
 
@@ -145,7 +143,12 @@
    :categories #{::sh/query}
    :added      "0.0.0"
    :arglists   (:arglists (meta #'q*))}
-  [conn {:keys [select] :as query}]
-  (as-> (q* conn query) %
-    ((eval %) conn select)
-    (% [{}])))
+  [conn query & args]
+  (let [{:keys [fn in] :as query} (q* conn query)
+        fn                        (partial fn conn)]
+    (if (not-empty args)
+      (apply fn args)
+      (if (and (empty? args)
+               (empty? in))
+        (fn)
+        fn))))

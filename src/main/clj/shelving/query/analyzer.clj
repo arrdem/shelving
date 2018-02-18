@@ -4,46 +4,160 @@
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:require [clojure.string :as str]
+            [clojure.core.match :refer [match]]
             [shelving.core :as sh]
             [shelving.query.common :refer [lvar?]]))
 
-(defn bind-params
-  "Params provides late bindings of logic variables to constants,
-  allowing \"fixed\" queries to be parameterized after the fact.
+(defn- put-spec!
+  "Helper for ascribing types to lvars.
 
-  Traverses the clauses for a query, replacing occurrences of
-  parameterized logic variables with their constant.
+  If there is a non-nil, non-`::hole` old spec, check that the new
+  spec and the old spec are the same to prevent type errors.
 
-  Throws `ExceptionInfo` if a clause becomes \"fully\" parameterized -
-  that is the left and right hand sides are both constants."
+  If you try to ascribe `::hole` to something that already has a
+  non-`::hole` spec, the already ascribed spec wins."
+  [current-spec lvar ascribed-spec]
+  (cond (and current-spec
+             (not= current-spec ::hole)
+             (not= current-spec ascribed-spec))
+        (throw (IllegalStateException.
+                (format "lvar '%s' ascribed incompatible specs '%s' and '%s'!"
+                        lvar current-spec ascribed-spec)))
+
+        (and current-spec
+             (not= current-spec ::hole)
+             (= ascribed-spec ::hole))
+        current-spec
+        
+        :else
+        ascribed-spec))
+
+(defn- ascribe-spec!
+  "Helper which tries to ascribe specs to lvars in the given dependency
+  map, returning the updated dependency map."
+  [depmap lvar spec]
+  (update-in depmap [lvar :spec] put-spec! lvar spec))
+
+(defn- normalize-clauses*
+  "find and in clauses have the same spec'd/unspec'd forms, so they normalize the same way."
   {:stability  :stability/unstable
    :categories #{::sh/query}
    :added      "0.0.0"}
-  [clauses params]
-  {:pre [(every? lvar? (keys params))]}
-  (mapv (fn [[lhs rel rhs :as clause]]
-          (let [lhs*    (if (lvar? lhs)
-                          (get params lhs lhs)
-                          lhs)
-                rhs*    (if (lvar? rhs)
-                          (get params rhs rhs)
-                          rhs)
-                clause* [lhs* rel rhs*]]
-            clause*))
-        clauses))
+  [k query]
+  (let [{:keys [depmap]
+         :or   {depmap {}}} query
+        depmap              (volatile! depmap)
+        k*                  (mapv (fn [clause]
+                                    (match clause
+                                      [:specd [:from (spec :guard qualified-keyword?) (lvar :guard lvar?)]]
+                                      (do (vswap! depmap ascribe-spec! lvar spec)
+                                          lvar)
+
+                                      [:unspecd (lvar :guard lvar?)]
+                                      (do (vswap! depmap ascribe-spec! lvar ::hole)
+                                          lvar)))
+                                  (get query k []))]
+    (assoc query
+           k k*
+           :depmap @depmap)))
+
+(defn normalize-find-clauses
+  "Normalize typed and untyped find clauses down to a sequence of symbol
+  identifiers, ascribing their specs to the lvars they define in the
+  depmap where available."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
+  [query]
+  (normalize-clauses* :find query))
+
+(defn normalize-in-clauses
+  "Normalize typed and untyped in clauses down to a sequence of symbol
+  identifiers, ascribing their specs to the lvars they define in the
+  depmap where available."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
+  [query]
+  (normalize-clauses* :in query))
+
+(defn normalize-where-holes
+  "Normalizes all where clauses to a \"holes\" form where the right hand
+  type may or may not be available. We'll check that all holes have or
+  can be filled before we do anything."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
+  [{:keys [where depmap] :as query}]
+  (let [depmap (volatile! depmap)
+        where* (mapv (fn [clause]
+                       (match [clause]
+                         [[:tuple [:inferred-rel [lhs (spec :guard qualified-keyword?) rhs]]]]
+                         (do (when (lvar? lhs)
+                               ;; Ensure the lhs exists by ascribing it ::hole if it doesn't exist
+                               (vswap! depmap ascribe-spec! lhs ::hole))
+                             
+                             (when (lvar? rhs)
+                               ;; Ascribe available spec information to rhs
+                               (vswap! depmap ascribe-spec! rhs spec))
+                             [lhs [::hole spec] rhs])
+
+                         [[:tuple [:explicit-rel [lhs ([fs ts] :as rel-id) rhs]]]]
+                         (do (when (lvar? lhs)
+                               (vswap! depmap ascribe-spec! lhs fs))
+                             (when (lvar? rhs)
+                               (vswap! depmap ascribe-spec! rhs ts))
+                             [lhs rel-id rhs])
+                         
+                         ;; FIXME (arrdem 2018-02-17):
+                         ;;   Only tuple clauses are supported at this time, if not and guard
+                         ;;   clauses get added, they'll need to be supported here.
+                         ))
+                     where)]
+    (assoc query
+           :where where*
+           :depmap @depmap)))
+
+(defn fill-holes
+  "Try to fill in holes in relations using accumulated spec
+  information."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
+  [{:keys [depmap where] :as query}]
+  (let [where* (mapv (fn [clause]
+                       (match clause
+                         [(lhs :guard lvar?) [::hole (to-spec :guard qualified-keyword?)] rhs]
+                         [lhs [(-> (get depmap lhs) (get :spec ::hole)) to-spec] rhs]
+
+                         [lhs [(fs :guard qualified-keyword?) (ts :guard qualified-keyword?)] rhs]
+                         [lhs [fs ts] rhs]))
+                     where)]
+    (assoc query :where where*)))
+
+(defn check-holes!
+  "Ensure that lvars have been ascribed non-`::hole` specs."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
+  [{:keys [where depmap] :as query}]
+  (doseq [[lvar {:keys [spec]}] depmap]
+    (when (= spec ::hole)
+      (throw (ex-info (format "Unable to resolve non-hole spec for lvar '%s'!" lvar)
+                      {:lvar   lvar
+                       :spec   spec
+                       :depmap depmap}))))
+  query)
 
 (defn check-specs!
-  "Given a sequence of where clauses, check that every used spec exists
-  in the connection's schema.
-
-  Returns the unmodified sequence of clauses, or throws `ExceptionInfo`."
+  "Ensure that all specs exist in the database schema."
   {:stability  :stability/unstable
    :categories #{::sh/query}
    :added      "0.0.0"}
-  [clauses conn]
+  [{:keys [where] :as query} conn]
   (when conn
     (let [schema (sh/schema conn)]
-      (doseq [[lhs [from to :as rel] rhs :as clause] clauses]
+      (doseq [[lhs [from to :as rel] rhs :as clause] where]
         (when-not (sh/has-spec? schema from)
           (throw (ex-info (format "Clause '%s' makes use of unknown spec '%s'!"
                                   clause from)
@@ -55,7 +169,7 @@
                                   clause to)
                           {:schema schema
                            :spec   to}))))))
-  clauses)
+  query)
 
 (defn check-rels!
   "Given a sequence of where clauses, check that every used relation
@@ -65,62 +179,17 @@
   {:stability  :stability/unstable
    :categories #{::sh/query}
    :added      "0.0.0"}
-  [clauses conn]
+  [{:keys [where] :as query} conn]
   (when conn
     (let [schema (sh/schema conn)]
-      (doseq [[lhs rel rhs :as clause] clauses]
+      (doseq [[lhs rel rhs :as clause] where]
         (when-not (sh/has-rel? schema rel)
           (throw (ex-info (format "Clause '%s' makes use of unknown relation '%s!"
                                   clause rel)
                           {:schema schema
                            :clause clause
                            :rel    rel}))))))
-  clauses)
-
-(defn check-constant-clauses!
-  "Given a sequence of where clauses, check that every clause relates either logic variables to
-  logic variables, or logic variables to constants.
-
-  Relating constants to constants is operationally meaningless.
-
-  Returns the unmodified sequence of clauses, or throws `ExceptionInfo`."
-  {:stability  :stability/unstable
-   :categories #{::sh/query}
-   :added      "0.0.0"}
-  [clauses conn]
-  (when conn
-    (doseq [[lhs rel rhs :as clause] clauses]
-      (when-not (or (lvar? lhs) (lvar? rhs))
-        (throw (ex-info (format "Parameterized clause '%s' contains no logic variables!"
-                                clause)
-                        {:clause clause})))))
-  clauses)
-
-(defn normalize-where-constants
-  "Where clauses may in the three forms:
-   - `[lvar  rel-id lvar]`
-   - `[lvar  rel-id const]`
-   - `[const rel-id lvar]`
-
-  Because relations are bidirectional with respect to their index
-  behavior, normalize all relations to constants so that constants
-  always occur on the right hand side of a relation."
-  {:stability  :stability/unstable
-   :categories #{::sh/query}
-   :added      "0.0.0"}
-  [clauses]
-  (mapv (fn [[lhs [from to :as rel] rhs :as clause]]
-          (if (and (lvar? rhs) (not (lvar? lhs)))
-            [rhs [to from] lhs]
-            clause))
-        clauses))
-
-(defn- put-spec! [current-spec lvar ascribed-spec]
-  (if (and current-spec (not= current-spec ascribed-spec))
-    (throw (IllegalStateException.
-            (format "lvar '%s' ascribed incompatible specs '%s' and '%s'!"
-                    lvar current-spec ascribed-spec)))
-    ascribed-spec))
+  query)
 
 (defn compile-dependency-map
   "Compiles a sequence of where clauses into a map from logic variables
@@ -177,89 +246,52 @@
     (if (not= dm dm*)
       (recur dm*) dm*)))
 
-(defn annotate-selected
-  "Annotate each selected logic variable so that it won't be removed by
-  `#'purge-unused`."
-  {:stability  :stability/unstable
-   :categories #{::sh/query}
-   :added      "0.0.0"}
-  [depmap select-map]
-  (reduce (fn [depmap [lvar spec]]
+(defn- annotate-lvars
+  [k depmap lvars]
+  (reduce (fn [depmap lvar]
             (-> depmap
                 (assoc-in [lvar :selected?] true)
-                (update-in [lvar :spec] put-spec! lvar spec)))
-          depmap select-map))
+                (assoc-in [lvar k] true)))
+          depmap lvars))
+
+(def ^:private annotate-selected
+  (partial annotate-lvars :find?))
+
+(def ^:private annotate-provided
+  (partial annotate-lvars :in?))
 
 (defn dataflow-optimize
   "Tree shake out any relations which are not selected or used."
   {:stability  :stability/unstable
    :categories #{::sh/query}
    :added      "0.0.0"}
-  [rels select-map]
-  (let [depmap (-> rels
-                   compile-dependency-map
-                   annotate-dependees
-                   (annotate-selected select-map)
-                   ;; Transitively annotate dependencies and dependees of selected lvars as
-                   ;; selected. This is required for correctness because we cannot relax any
-                   ;; forwards or backwards constraints as a result of optimization.
-                   flow-selection)
+  [{:keys [depmap find in where] :as query}]
+  (let [depmap (as-> where %
+                 (compile-dependency-map %)
+                 (annotate-dependees %)
+                 ;; Annotate selected (find) and provided (in) vars so they cannot be elided
+                 (annotate-selected % find)
+                 (annotate-provided % in)
+                 ;; Transitively annotate dependencies and dependees of selected lvars as
+                 ;; selected. This is required for correctness because we cannot relax any
+                 ;; forwards or backwards constraints as a result of optimization.
+                 (flow-selection %)
+                 (merge-with merge depmap %))
         unused (->> depmap
-                    (keep (fn [[lvar {:keys [dependees selected?]}]]
-                            (when (and (empty? dependees) (not selected?))
+                    (keep (fn [[lvar {:keys [clauses dependees selected?]}]]
+                            (when (and (empty? clauses) (empty? dependees) (not selected?))
                               lvar)))
                     set)]
     (if-not (empty? unused)
       (do (binding [*out* *err*]
             (println "WARN shelving.query.analyzer/dataflow-optimize] Optimizing out unused lvars"
                      (pr-str unused)))
-          (recur (remove (fn [[lhs rel rhs]]
-                           (or (unused lhs) (unused rhs)))
-                         rels)
-                 select-map))
-      depmap)))
-
-(defn check-select-exist!
-  "Checks that all logic variables designated for selection exist within
-  the query.
-
-  Throws `ExceptionInfo` if errors are detected.
-
-  Otherwise returns the dependency map unmodified."
-  {:stability  :stability/unstable
-   :categories #{::sh/query}
-   :added      "0.0.0"}
-  [dependency-map select-map]
-  (let [missing-lvars (->> select-map
-                           keys
-                           (keep #(when-not (contains? dependency-map %) %))
-                           doall
-                           seq)]
-    (when missing-lvars
-      (throw (ex-info "Found undefined logic variables!"
-                      {:lvars missing-lvars}))))
-  dependency-map)
-
-(defn check-select-specs!
-  "Checks that all logic variables designated for selection have their
-  ascribed specs within the query.
-
-  Throws `ExceptionInfo` if errors are detected.
-
-  Otherwise returns the dependency map unmodified."
-  {:stability  :stability/unstable
-   :categories #{::sh/query}
-   :added      "0.0.0"}
-  [dependency-map select-map]
-  (doseq [[lvar select-spec] select-map
-          :let               [analyzed-spec (-> (get dependency-map lvar) :spec)]]
-    (when-not (= select-spec analyzed-spec)
-      (throw (ex-info (format "lvar spec conflict detected! lvar '%s' seems to have spec '%s', but spec '%s' was requested."
-                              lvar analyzed-spec select-spec)
-                      {:lvar          lvar
-                       :select-spec   select-spec
-                       :analyzed-spec analyzed-spec}))))
-  dependency-map)
+          (recur (update query :where
+                         #(remove (fn [[lhs rel rhs]]
+                                    (or (unused lhs) (unused rhs)))
+                                  %))))
+      (assoc query
+             :depmap depmap))))
 
 (defn topological-sort-lvars
   "Return a topological sort of the logic variables."
