@@ -1,5 +1,5 @@
 (ns shelving.query
-  "A Datalog-style query implementation over Shelves."
+  "A Datalog query engine over Shelves."
   {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
