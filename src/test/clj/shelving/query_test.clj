@@ -69,4 +69,8 @@
                (->> (q *conn
                        '[:find  [?bar]
                          :where [[?bar [::bar ::qux] 1]]])
+                    count)
+
+               (->> (q *conn
+                       '[:find ?bar :where [?bar [::bar ::qux] 1]])
                     count))))))
