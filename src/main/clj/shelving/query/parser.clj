@@ -12,21 +12,20 @@
   (s/tuple #{:from} qualified-keyword? lvar?))
 
 (s/def ::lvar
-  (s/or :specd   ::lvar+spec
-        :unspecd lvar?))
+  (s/or :unspecd lvar?
+        :specd   ::lvar+spec))
 
-(s/def ::seq-datalog
-  (s/cat :find  ::find
-         :in    (s/? ::in)
-         :where (s/? ::where)))
+(s/def ::lvars
+  (s/alt :inline (s/+ ::lvar)
+         :wrapped (s/coll-of ::lvar)))
 
 (s/def ::find
   (s/cat :find #{:find}
-         :symbols (s/coll-of ::lvar)))
+         :symbols ::lvars))
 
 (s/def ::in
   (s/cat :in #{:in}
-         :parameters (s/coll-of ::lvar)))
+         :parameters ::lvars))
 
 (s/def ::full-tuple
   (s/tuple lvar? ::sh/rel-id some?))
@@ -52,9 +51,18 @@
         #_:guard #_::guard
         #_:negation #_::negation))
 
+(s/def ::clauses
+  (s/alt :wrapped (s/coll-of ::clause)
+         :inline (s/* ::clause)))
+
 (s/def ::where
   (s/cat :where #{:where}
-         :rels (s/coll-of ::clause)))
+         :rels ::clauses))
+
+(s/def ::seq-datalog
+  (s/cat :find  ::find
+         :in    (s/? ::in)
+         :where (s/? ::where)))
 
 (defn- parse-datalog
   "Provides a datalog front end to the Shelving query system."
@@ -64,9 +72,9 @@
         (let [{{find :symbols}  :find
                {where :rels}    :where
                {in :parameters} :in} v]
-          {:find  find
-           :where where
-           :in    in}))))
+          {:find  (second find)
+           :where (second where)
+           :in    (second in)}))))
 
 (s/def ::datalog
   (s/conformer parse-datalog))
