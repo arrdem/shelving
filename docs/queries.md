@@ -24,7 +24,7 @@ Given a query and a connection, builds and returns both the fully analyzed logic
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q**](shelving/query.clj#L80)
+## [shelving.query/q**](shelving/query.clj#L81)
  - `(q** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -35,7 +35,7 @@ Given a query and a connection, builds and returns a sequence of plan "clauses" 
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q*](shelving/query.clj#L97)
+## [shelving.query/q*](shelving/query.clj#L98)
  - `(q* conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -46,18 +46,18 @@ Builds and returns the list form of a function implementing the given datalog qu
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q](shelving/query.clj#L116)
+## [shelving.query/q](shelving/query.clj#L117)
  - `(q conn query)`
 
 **UNSTABLE**: This API will probably change in the future
 
-Cribbing from Datomic's q operator here.  `find` is a mapping of {symbol spec} pairs identifying logic variables to be selected, and the specs from which they are to be selected.
+Cribbing from Datomic's q operator here.  `find` is a sequence of symbols naming logic variables (by convention having the `?-` prefix) and `[:from spec lvar]` spec statements. `find` indicates what logic variables should be realized to values and produced as query results.
 
-`where` is a sequence of rel "constraint" triples. Constraint triples must fit one of three forms: - `[lvar  rel-id lvar]` - `[lvar  rel-id const]` - `[const rel-id lvar]`
+`where` is a sequence of rel "constraint" triples. Constraint triples must fit one of four forms: - `[lvar rel-id   lvar]` - `[lvar rel-id   const]` - `[lvar rel-spec lvar]` - `[lvar rel-spec const]`
 
-for lvar existentially being a logic variable, rel-id being a valid `[spec spec]` directed relation pair, and const being any constant value for which there exists a meaningful content hash.
+for `lvar` existentially being a logic variable, `rel-id` being a valid `[spec spec]` directed relation pair, `rel-spec` being the spec of the right hand side of a relation; the left hand side being type inferred and const being any constant value for which there exists a meaningful content hash.
 
-`params` may be a map from lvars to constants, allowing for the specialization of queries.
+`in` may be an inline or explicit sequence of logic variables, which may be annotated with a spec in the same `[:from <spec> <lvar>]` notation as supported by `find`. In parameters are compiled to arguments of the produced query function in the order the are given lexically.
 
 Evaluation precedes by attempting to unify the logic variables over the specified relations.
 
