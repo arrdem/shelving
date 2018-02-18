@@ -62,20 +62,21 @@
   ;; cardinality, we can ensure that dependees of equal order are sorted by their database
   ;; cardinality thus minimizing the size of intersection scans that need to be resident at any
   ;; given point in time.
-  (let [{:keys [depmap] :as query} (q**** conn query)
-        ordering                   (as-> depmap %
-                                     (map (fn [[k {:keys [dependencies]
-                                                   :or   {dependencies #{}}}]]
-                                            [k dependencies]) %)
-                                     (into (sorted-map-by #(as-> (compare (sh/count-spec conn %2)
-                                                                          (sh/count-spec conn %1)) $
-                                                             (if (= $ 0)
-                                                               (compare %1 %2) $)))
-                                           %)
-                                     (analyzer/topological-sort-lvars %))]
-    (merge query
-           {:depmap   depmap
-            :ordering ordering})))
+  (let [{:keys [depmap]
+         :as   query} (q**** conn query)
+        ordering      (as-> depmap %
+                        (map (fn [[k {:keys [dependencies]
+                                      :or   {dependencies #{}}}]]
+                               [k dependencies]) %)
+                        (into (sorted-map-by #(as-> (compare (sh/count-spec conn %2)
+                                                             (sh/count-spec conn %1)) $
+                                                (if (= $ 0)
+                                                  (compare %1 %2) $)))
+                              %)
+                        (analyzer/topological-sort-lvars %))]
+    (assoc query
+           :depmap   depmap
+           :ordering ordering)))
 
 (defn q**
   "Published implementation detail.
