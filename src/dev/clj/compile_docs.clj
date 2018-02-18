@@ -60,5 +60,5 @@
 
   (compile-docs category-map nss))
 
-(comment
+(defn recompile-docs! [& args]
   (recompile-docs category-map '[shelving.core shelving.query]))

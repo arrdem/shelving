@@ -8,7 +8,9 @@
             [shelving.query.analyzer :as analyzer]
             [shelving.query.compiler :as compiler]
             [shelving.query.planner :as planner]
-            [clojure.spec.alpha :as s]))
+            [clojure.spec.alpha :as s]
+            [clojure.core.cache :as cache]
+            [hasch.core :refer [uuid]]))
 
 (defn q****
   "Published implementation detail.
@@ -144,19 +146,45 @@
   Evaluation precedes by attempting to unify the logic variables over
   the specified relations.
 
-  Produces a sequence of solutions, being mappings from the selected
-  logic variables to their values at solutions to the given relation
-  constraints."
+  Compiles and returns a new function of a connection and `in`
+  parameters which will execute the compiled query.
+
+  Query compilation is somewhat expensive so it's suggested that
+  queries be compiled once and then parameterized repeatedly."
   {:stability  :stability/unstable
    :categories #{::sh/query}
-   :added      "0.0.0"
-   :arglists   (:arglists (meta #'q*))}
+   :added      "0.0.0"}
+  [conn query]
+  (let [{:keys [fn in] :as query} (q* conn query)]
+    fn))
+
+(def ^{:dynamic    true
+       :stability  :stability/unstable
+       :categories #{::sh/query}
+       :added      "0.0.0"}
+  *query-cache*
+  "A cache of compiled queries.
+
+  By default LRU caches 128 query implementations.
+
+  Queries are indexed by content hash without any attempt to normalize
+  them. Run the same `q!` a bunch of times on related queries and this
+  works. Spin lots of single use queries and you'll bust it."
+  (atom (cache/lru-cache-factory {} :threshold 128)))
+
+(defn q!
+  "Same as `#'q` but directly accepts arguments and executes the
+  compiled query.
+
+  Queries are cached to avoid repeated compilation."
+  {:stability  :stability/unstable
+   :categories #{::sh/query}
+   :added      "0.0.0"}
   [conn query & args]
-  (let [{:keys [fn in] :as query} (q* conn query)
-        fn                        (partial fn conn)]
-    (if (not-empty args)
-      (apply fn args)
-      (if (and (empty? args)
-               (empty? in))
-        (fn)
-        fn))))
+  (let [query-id (uuid query)]
+    (apply (locking *query-cache*
+             (get (if (cache/has? @*query-cache* query-id)
+                    (swap! *query-cache* cache/hit query-id)
+                    (swap! *query-cache* cache/miss query-id (q conn query)))
+                  query-id))
+           conn args)))

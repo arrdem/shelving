@@ -2,7 +2,7 @@
   "A demo of the query engine."
   (:require [clojure.spec.alpha :as s]
             [shelving.core :as sh]
-            [shelving.query :refer [q**** q*** q** q* q]]
+            [shelving.query :refer [q**** q*** q** q* q q!]]
             [shelving.trivial-edn :refer [->TrivialEdnShelf]]))
 
 (s/def ::foo string?)
@@ -35,12 +35,12 @@
 
 (comment
   ;; All packages in the org.clojure group
-  (q *conn
-     '[:find  [?bar]
-       :where [[?bar [::bar ::foo] "a"]]])
+  (q! *conn
+      '[:find  [?bar]
+        :where [[?bar [::bar ::foo] "a"]]])
 
   ;; All groups which have a package at 1.0.0
-  (q *conn
-     '[:find [[:from ::qux ?qux]]
-       :where [[?bar [::bar ::foo] "a"]
-               [?bar [::bar ::qux] ?qux]]]))
+  (q! *conn
+      '[:find [[:from ::qux ?qux]]
+        :where [[?bar [::bar ::foo] "a"]
+                [?bar [::bar ::qux] ?qux]]]))

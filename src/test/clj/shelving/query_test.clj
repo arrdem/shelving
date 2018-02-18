@@ -2,7 +2,7 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.test :as t]
             [shelving.core :as sh]
-            [shelving.query :refer [q]]
+            [shelving.query :refer [q q!]]
             [shelving.trivial-edn :refer [->TrivialEdnShelf]]))
 
 (s/def ::foo string?)
@@ -35,12 +35,12 @@
 
     (t/testing "Testing unconstrained selects"
       (t/is (= #{"a" "b" "c"}
-               (->> (q *conn '[:find [[:from ::foo ?foo]]])
+               (->> (q! *conn '[:find [[:from ::foo ?foo]]])
                     (map '?foo)
                     set)))
 
       (t/is (= #{1 2 3}
-               (->> (q *conn '[:find [[:from ::qux ?qux]]])
+               (->> (q! *conn '[:find [[:from ::qux ?qux]]])
                     (map '?qux)
                     set))))
 
@@ -55,22 +55,22 @@
                  [2 #{"a"}]
                  [1 #{"a" "b" "c"}]]]
           (t/is (= s
-                   (->> (q-fn b) (map '?foo) set)))))
+                   (->> (q-fn *conn b) (map '?foo) set)))))
 
       (t/is (= #{1}
-               (->> (q *conn
-                       '[:find  [?qux]
-                         :where [[?bar [::bar ::qux] ?qux]
-                                 [?bar [::bar ::foo] "b"]]])
+               (->> (q! *conn
+                        '[:find  [?qux]
+                          :where [[?bar [::bar ::qux] ?qux]
+                                  [?bar [::bar ::foo] "b"]]])
                     (map '?qux)
                     set)))
 
       (t/is (= 3
-               (->> (q *conn
-                       '[:find  [?bar]
-                         :where [[?bar [::bar ::qux] 1]]])
+               (->> (q! *conn
+                        '[:find  [?bar]
+                          :where [[?bar [::bar ::qux] 1]]])
                     count)
 
-               (->> (q *conn
-                       '[:find ?bar :where [?bar [::bar ::qux] 1]])
+               (->> (q! *conn
+                        '[:find ?bar :where [?bar [::bar ::qux] 1]])
                     count))))))

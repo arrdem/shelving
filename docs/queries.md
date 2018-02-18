@@ -2,7 +2,7 @@
 
 The searching API and helpers designed to support it.
 
-## [shelving.query/q****](shelving/query.clj#L13)
+## [shelving.query/q****](shelving/query.clj#L15)
  - `(q**** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -13,7 +13,7 @@ Given a query and a connection, builds and returns the dependency map on the que
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q***](shelving/query.clj#L44)
+## [shelving.query/q***](shelving/query.clj#L46)
  - `(q*** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -24,7 +24,7 @@ Given a query and a connection, builds and returns both the fully analyzed logic
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q**](shelving/query.clj#L81)
+## [shelving.query/q**](shelving/query.clj#L83)
  - `(q** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -35,7 +35,7 @@ Given a query and a connection, builds and returns a sequence of plan "clauses" 
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q*](shelving/query.clj#L98)
+## [shelving.query/q*](shelving/query.clj#L100)
  - `(q* conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -46,7 +46,7 @@ Builds and returns the list form of a function implementing the given datalog qu
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q](shelving/query.clj#L117)
+## [shelving.query/q](shelving/query.clj#L119)
  - `(q conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -61,7 +61,28 @@ for `lvar` existentially being a logic variable, `rel-id` being a valid `[spec s
 
 Evaluation precedes by attempting to unify the logic variables over the specified relations.
 
-Produces a sequence of solutions, being mappings from the selected logic variables to their values at solutions to the given relation constraints.
+Compiles and returns a new function of a connection and `in` parameters which will execute the compiled query.
+
+Query compilation is somewhat expensive so it's suggested that queries be compiled once and then parameterized repeatedly.
+
+## [shelving.query/*query-cache*](shelving/query.clj#L161)
+
+**UNSTABLE**: This API will probably change in the future
+
+A cache of compiled queries.
+
+By default LRU caches 128 query implementations.
+
+Queries are indexed by content hash without any attempt to normalize them. Run the same `q!` a bunch of times on related queries and this works. Spin lots of single use queries and you'll bust it.
+
+## [shelving.query/q!](shelving/query.clj#L175)
+ - `(q! conn query & args)`
+
+**UNSTABLE**: This API will probably change in the future
+
+Same as `#'q` but directly accepts arguments and executes the compiled query.
+
+Queries are cached to avoid repeated compilation.
 
 ## [shelving.core/count-spec](shelving/core.clj#L179)
  - `(count-spec conn spec)`
