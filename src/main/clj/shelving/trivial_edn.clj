@@ -70,8 +70,11 @@
 (defmethod sh/close ::shelf [s]
   (sh/flush s))
 
-(defmethod sh/get ::shelf [{:keys [shelving.trivial-edn/state]} spec record-id]
-  (-> @state (get :records) (get spec) (get record-id)))
+(defmethod sh/get ::shelf
+  ([conn spec record-id]
+   (sh/get conn spec record-id nil))
+  ([{:keys [shelving.trivial-edn/state]} spec record-id not-found]
+   (-> @state (get :records) (get spec) (get record-id not-found))))
 
 (declare ^:private put*)
 
@@ -93,11 +96,13 @@
 
   Removes all pairs containing the given `record-id` from all rel tables."
   [rels schema spec record-id]
-  (->> (for [[[from-spec to-spec :as rel-id] rel-map] rels
-             :when                                    (or (= spec from-spec)
-                                                          (= spec to-spec))]
-         [rel-id (rel-invalidate-record* rel-id rel-map record-id)])
-       (into {})))
+  (->> (when (sh/is-record? schema spec)
+         (for [[[from-spec to-spec :as rel-id] rel-map] rels
+               :when                                    (or (= spec from-spec)
+                                                            (= spec to-spec))]
+           [rel-id (rel-invalidate-record* rel-id rel-map record-id)]))
+       (into {})
+       (merge rels)))
 
 (defn- rel-index-record
   "Relation implementation detail.
@@ -122,7 +127,6 @@
 
 ;; FIXME (arrdem 2018-02-04):
 ;;   Can I optimize this in the case of inserting a value? Possibilities:
-;;   - No rels to invalidate
 ;;   - May not need to do the insert at all
 ;;   - Index building could be batched
 (defn- put*

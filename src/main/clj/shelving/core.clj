@@ -80,14 +80,36 @@
 (defmulti get
   "Fetches a record from a shelf by its spec and ID.
 
+  Returns the record if it exists, otherwise returning the
+  user-provided `not-found` value, taken to be `nil` by default.
+
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
   {:categories #{::basic}
    :stability  :stability/stable
    :added      "0.0.0"
+   :arglists   '([conn spec record-id]
+                 [conn spec record-id not-found])}
+  #'dx)
+
+(defmulti has?
+  "Indicates whether a shelf has a record of a spec.
+
+  Returns `true` if and only if the shelf contains a record if the
+  given spec and ID.  Otherwise must return `false`.
+
+  Implementations may provide alternate implementations of this
+  method."
+  {:categories #{::basic}
+   :stability  :stability/stable
+   :added      "0.0.0"
    :arglists   '([conn spec record-id])}
   #'dx)
+
+(defmethod has? :default [conn spec record-id]
+  (let [not-found (Object.)]
+    (not= not-found (get conn spec record-id not-found))))
 
 (defmulti put
   "Enters a record into a shelf according to its spec in the schema,

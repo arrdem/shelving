@@ -3,6 +3,7 @@
             [shelving.trivial-edn :refer [->TrivialEdnShelf]]
             [clojure.test :as t]
             [clojure.test.check :as tc]
+            [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as sgen]
@@ -34,14 +35,16 @@
           (t/is (= '(::foo ::baz)
                    (sh/enumerate-specs conn))))
 
-        (t/testing "Testing put/get on values"
+        (t/testing "Testing put/get/has? on values"
           (let [v1 (sgen/generate foo-gen)
                 r1 (sh/put conn ::foo v1)
                 v2 (sgen/generate foo-gen)
                 r2 (sh/put conn ::foo v2)]
 
             (t/is (= v1 (sh/get conn ::foo r1)))
+            (t/is (sh/has? conn ::foo r1))
             (t/is (= v2 (sh/get conn ::foo r2)))
+            (t/is (sh/has? conn ::foo r2))
             (t/is (= (list r1 r2) (sh/enumerate-spec conn ::foo)))
             (t/is (thrown? UnsupportedOperationException
                            (sh/put conn ::foo r1 (sgen/generate foo-gen))))
@@ -53,6 +56,7 @@
                 b2  (sgen/generate baz-gen)
                 bi1 (sh/put conn ::baz b1)]
             (t/is (= b1 (sh/get conn ::baz bi1)))
+            (t/is (sh/has? conn ::baz bi1))
             (t/is (= (list bi1) (sh/enumerate-spec conn ::baz)))
 
             ;; Upserts should work

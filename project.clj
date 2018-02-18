@@ -8,7 +8,8 @@
                  [org.clojure/core.match "0.3.0-alpha5"]
                  [io.replikativ/hasch "0.3.4"
                   :exclusions [com.cemerick/austin]]
-                 [me.arrdem/detritus "0.3.2"]]
+                 [me.arrdem/detritus "0.3.2"]
+                 [org.clojure/core.match "0.3.0-alpha5"]]
 
   :source-paths      ["src/main/clj"
                       "src/main/cljc"]
