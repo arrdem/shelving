@@ -181,7 +181,7 @@
    :categories #{::sh/query}
    :added      "0.0.0"}
   [conn query & args]
-  (let [query-id (uuid query)]
+  (let [query-id (uuid (s/conform ::parser/datalog query))]
     (apply (locking *query-cache*
              (get (if (cache/has? @*query-cache* query-id)
                     (swap! *query-cache* cache/hit query-id)

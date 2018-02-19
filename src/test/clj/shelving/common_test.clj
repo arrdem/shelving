@@ -72,7 +72,7 @@
                     (sh/value-spec ::baz)
                     (sh/spec-rel [::baz ::foo] :foo))
         conn    (sh/open (->cfg schema))]
-    (tc/quick-check 1000
+    (tc/quick-check 100
       (prop/for-all [baz baz-gen]
         (let [the-foo (:foo baz)
               foo-id  (sh/put conn ::foo the-foo)
@@ -91,7 +91,7 @@
                     (sh/record-spec ::baz)
                     (sh/spec-rel [::baz ::foo] :foo))
         conn    (sh/open (->cfg schema))]
-    (tc/quick-check 1000
+    (tc/quick-check 100
       (prop/for-all [baz  baz-gen
                      baz' baz-gen]
         (let [the-foo  (:foo baz)
