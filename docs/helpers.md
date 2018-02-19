@@ -4,12 +4,12 @@
 
 Utilities for computing UUIDs for use as shelf keys.
 
-## [shelving.core/random-uuid](shelving/core.clj#L199)
+## [shelving.core/random-uuid](shelving/core.clj#L201)
  - `(random-uuid _)`
 
 Returns a random UUID.
 
-## [shelving.core/digest->uuid](shelving/core.clj#L207)
+## [shelving.core/digest->uuid](shelving/core.clj#L209)
  - `(digest->uuid digest)`
 
 Takes the first 16b of a `byte[]` as a 1228bi UUID.

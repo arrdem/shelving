@@ -42,7 +42,7 @@ artifact?" or "what versions of ring are there?".
 The relations API provides a way to describe how to decompose a spec into its component values so
 that indices can be built for efficient query access.
 
-## [shelving.core/spec-rel](shelving/core.clj#L449)
+## [shelving.core/spec-rel](shelving/core.clj#L490)
  - `(spec-rel schema [from-spec to-spec :as rel-id] to-fn)`
 
 Enters a rel(ation) into a schema, returning a new schema which will maintain that rel.
@@ -57,29 +57,29 @@ At insertion time, the `to-spec` must exist as a supported shelf.
 
 The `to-spec` MAY NEVER name a "record" shelf. `to-spec` must be a "value" shelf.
 
-## [shelving.core/has-rel?](shelving/core.clj#L492)
+## [shelving.core/has-rel?](shelving/core.clj#L533)
  - `(has-rel? schema [from-spec to-spec :as rel-id])`
 
 True if and only if both specs in the named rel, and the named rel exist in the schema.
 
-## [shelving.core/is-alias?](shelving/core.clj#L508)
+## [shelving.core/is-alias?](shelving/core.clj#L549)
  - `(is-alias? schema rel-id)`
 
 True if and only if the schema has the relation (`#'has-rel?`) and the relation is an alias.
 
-## [shelving.core/resolve-alias](shelving/core.clj#L523)
+## [shelving.core/resolve-alias](shelving/core.clj#L564)
  - `(resolve-alias schema rel-id)`
 
 When the schema has a rel (`#'has-rel?`) and it is an alias (`#'is-alias?`) resolve it, returning the directed rel it aliases. Otherwise return the rel.
 
-## [shelving.core/enumerate-rels](shelving/core.clj#L535)
+## [shelving.core/enumerate-rels](shelving/core.clj#L576)
  - `(enumerate-rels conn)`
 
 Enumerates all the known rels by ID (their `[from-spec to-spec]` pair). Includes aliases.
 
 Shelves may provide alternate implementation of this method.
 
-## [shelving.core/enumerate-rel](shelving/core.clj#L548)
+## [shelving.core/enumerate-rel](shelving/core.clj#L589)
  - `(enumerate-rel conn rel-id)`
 
 Enumerates the `(from-id to-id)` pairs of the given rel(ation).
@@ -88,7 +88,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/relate-by-id](shelving/core.clj#L580)
+## [shelving.core/relate-by-id](shelving/core.clj#L621)
  - `(relate-by-id conn rel-id spec id)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -103,7 +103,7 @@ By default uses [`#'enumerate-rel`](#enumerate-rel) to do a full scan of the pai
 
 Shelves may provide more efficient implementations of this method.
 
-## [shelving.core/relate-by-value](shelving/core.clj#L610)
+## [shelving.core/relate-by-value](shelving/core.clj#L651)
  - `(relate-by-value conn rel-id spec id)`
 
 **UNSTABLE**: This API will probably change in the future

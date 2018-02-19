@@ -5,14 +5,14 @@
 The various shelving implementations define their own mechanisms for constructing
 configurations. These operations should be shared by all implementations.
 
-## [shelving.core/open](shelving/core.clj#L39)
+## [shelving.core/open](shelving/core.clj#L41)
  - `(open config)`
 
 Opens a shelf for reading or writing.
 
 Shelves must implement this method.
 
-## [shelving.core/flush](shelving/core.clj#L51)
+## [shelving.core/flush](shelving/core.clj#L53)
  - `(flush conn)`
 
 Flushes (commits) an open shelf.
@@ -21,7 +21,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/close](shelving/core.clj#L65)
+## [shelving.core/close](shelving/core.clj#L67)
  - `(close conn)`
 
 Closes an open shelf.
@@ -30,7 +30,7 @@ Shelves may implement this method.
 
 By default just flushes.
 
-## [shelving.core/get](shelving/core.clj#L80)
+## [shelving.core/get](shelving/core.clj#L82)
  - `(get conn spec record-id)`
  - `(get conn spec record-id not-found)`
 
@@ -42,7 +42,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/has?](shelving/core.clj#L96)
+## [shelving.core/has?](shelving/core.clj#L98)
  - `(has? conn spec record-id)`
 
 Indicates whether a shelf has a record of a spec.
@@ -51,7 +51,7 @@ Returns `true` if and only if the shelf contains a record if the given spec and 
 
 Implementations may provide alternate implementations of this method.
 
-## [shelving.core/put](shelving/core.clj#L114)
+## [shelving.core/put](shelving/core.clj#L116)
  - `(put conn spec val)`
  - `(put conn spec id val)`
 
@@ -65,7 +65,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/schema](shelving/core.clj#L136)
+## [shelving.core/schema](shelving/core.clj#L138)
  - `(schema conn)`
 
 Returns the schema record for a given connection.

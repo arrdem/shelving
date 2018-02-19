@@ -84,7 +84,7 @@ Same as `#'q` but directly accepts arguments and executes the compiled query.
 
 Queries are cached to avoid repeated compilation.
 
-## [shelving.core/count-spec](shelving/core.clj#L179)
+## [shelving.core/count-spec](shelving/core.clj#L181)
  - `(count-spec conn spec)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -97,7 +97,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/count-rel](shelving/core.clj#L562)
+## [shelving.core/count-rel](shelving/core.clj#L603)
  - `(count-rel conn rel-id)`
 
 **UNSTABLE**: This API will probably change in the future
