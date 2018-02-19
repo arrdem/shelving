@@ -413,19 +413,23 @@
   [schema]
   (loop [[s & specs* :as specs] (-> schema :specs keys)
          acc                    {}
-         seen                   #{}] 
+         seen?                  #{}] 
     (if (empty? specs) acc
-        (if s
-          (let [seen* (conj seen s)
-                s*    (s/describe* (s/get-spec s))]
-            (recur (remove seen*
-                           (concat specs*
-                                   (fix #(mapcat subspecs %) [s*])))
-                   (assoc acc s (-> (clojure.core/get schema s {:type ::spec :record? true})
-                                    (dissoc :id-fn)
-                                    (assoc :def s*)))
-                   seen*))
-          (recur specs* acc seen)))))
+        (if (and s (not (seen? s)))
+          (let [seen* (conj seen? s)
+                s*    (or (s/get-spec s) ::s/unknown)]
+            (if (= s* ::s/unknown)
+              (throw (ex-info (format "Unable to resolve specs! Spec '%s' is unknown" s)
+                              {:schema schema
+                               :spec   s}))
+              (let [s* (s/describe* s*)]
+                (recur (concat specs*
+                               (fix #(mapcat subspecs %) [s*]))
+                       (assoc acc s (-> (clojure.core/get schema s {:type ::spec :record? true})
+                                        (dissoc :id-fn)
+                                        (assoc :def s*)))
+                       seen*))))
+          (recur specs* acc seen?)))))
 
 (defn check-specs!
   "Helper for use in checking compatibility between database persistable specs.
