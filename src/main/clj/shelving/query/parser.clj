@@ -4,6 +4,7 @@
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:require [clojure.spec.alpha :as s]
+            [clojure.core.specs.alpha :as cs]
             [clojure.test.check.generators :as gen]
             [shelving.core :as sh]
             [shelving.query.common :refer [lvar?]]))
@@ -26,14 +27,6 @@
   (s/alt :inline (s/+ ::lvar+spec?)
          :wrapped (s/coll-of ::lvar+spec?)))
 
-(s/def ::find
-  (s/cat :find #{:find}
-         :symbols ::lvars))
-
-(s/def ::in
-  (s/cat :in #{:in}
-         :parameters ::lvars))
-
 (s/def ::full-tuple
   (s/tuple ::lvar ::sh/rel-id some?))
 
@@ -45,13 +38,15 @@
         :inferred-rel ::terse-tuple))
 
 (s/def ::negation
-  (s/cat :not #{:not}
-         :clause ::clause))
+  (s/and (s/cat :not #{:not}
+                :clause ::clause)
+         (s/conformer
+          (fn [{:keys [clause]}] clause))))
 
 (s/def ::guard
   (s/cat :guard #{:guard}
-         :clause (s/cat :fn qualified-symbol?
-                        :lvar ::lvar)))
+         :fn (constantly true) ;; FIXME lolsob
+         :lvars (s/* ::lvar)))
 
 (s/def ::clause
   (s/or :tuple ::tuple
@@ -62,27 +57,36 @@
   (s/alt :wrapped (s/coll-of ::clause)
          :inline (s/* ::clause)))
 
-(s/def ::where
+;; seq-style datalog
+;; 
+;; Note that these apparently can't use conformers to simplify because they all inhabit the same seq
+;; of inputs? Not sure how spec is handling the regex walk.
+(s/def :shelving.query.parser.seq/find
+  (s/cat :find #{:find}
+         :symbols ::lvars))
+
+(s/def :shelving.query.parser.seq/in
+  (s/cat :in #{:in}
+         :parameters ::lvars))
+
+(s/def :shelving.query.parser.seq/where
   (s/cat :where #{:where}
          :rels ::clauses))
-
-;; seq-style datalog
 
 (defn- parse-datalog-seq
   "Provides a datalog front end to the Shelving query system."
   [v]
-  (if (= v ::s/invalid) v
-      (let [{{find :symbols}  :find
-             {where :rels}    :where
-             {in :parameters} :in} v]
-        {:find  (second find)
-         :where (second where)
-         :in    (second in)})))
+  (let [{{find :symbols}  :find
+         {where :rels}    :where
+         {in :parameters} :in} v]
+    {:find  (second find)
+     :where (second where)
+     :in    (second in)}))
 
 (s/def :shelving.query.parser.seq/datalog
-  (s/and (s/cat :find  ::find
-                :in    (s/? ::in)
-                :where (s/? ::where))
+  (s/and (s/cat :find  :shelving.query.parser.seq/find
+                :in    (s/? :shelving.query.parser.seq/in)
+                :where (s/? :shelving.query.parser.seq/where))
          (s/conformer parse-datalog-seq)))
 
 ;; map-style datalog
@@ -112,4 +116,4 @@
 (s/def ::datalog
   (s/and (s/or :seq :shelving.query.parser.seq/datalog
                :map :shelving.query.parser.map/datalog)
-         (s/conformer (fn [[tag val]] val))))
+         (s/conformer second)))
