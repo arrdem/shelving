@@ -9,17 +9,15 @@
   for use when the read and write load is so small that flushing the
   entire store every time is an acceptable cost compared to the
   complexity of a more traditional storage layer or database."
-  {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"]
-   :license "Eclipse Public License 1.0"
+  {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
+   :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:refer-clojure :exclude [flush get])
-  (:import [java.util UUID]
-           [java.security MessageDigest]
-           [java.nio ByteBuffer]
-           [me.arrdem UnimplementedOperationException])
-  (:require [clojure.walk :refer [postwalk]]
-            [clojure.spec.alpha :as s]
-            [hasch.core :refer [uuid]]))
+  (:require [clojure.spec.alpha :as s]
+            [hasch.core :refer [uuid]])
+  (:import java.nio.ByteBuffer
+           java.util.UUID
+           me.arrdem.UnimplementedOperationException))
 
 (defn- dx
   ([{:keys [type]}] type)
@@ -82,14 +80,36 @@
 (defmulti get
   "Fetches a record from a shelf by its spec and ID.
 
+  Returns the record if it exists, otherwise returning the
+  user-provided `not-found` value, taken to be `nil` by default.
+
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
   {:categories #{::basic}
    :stability  :stability/stable
    :added      "0.0.0"
+   :arglists   '([conn spec record-id]
+                 [conn spec record-id not-found])}
+  #'dx)
+
+(defmulti has?
+  "Indicates whether a shelf has a record of a spec.
+
+  Returns `true` if and only if the shelf contains a record if the
+  given spec and ID.  Otherwise must return `false`.
+
+  Implementations may provide alternate implementations of this
+  method."
+  {:categories #{::basic}
+   :stability  :stability/stable
+   :added      "0.0.0"
    :arglists   '([conn spec record-id])}
   #'dx)
+
+(defmethod has? :default [conn spec record-id]
+  (let [not-found (Object.)]
+    (not= not-found (get conn spec record-id not-found))))
 
 (defmulti put
   "Enters a record into a shelf according to its spec in the schema,
@@ -155,6 +175,24 @@
   #'dx)
 
 (required! enumerate-spec)
+
+(defmulti count-spec
+  "Returns an upper bound on the cardinality of a given spec.
+
+  The bound should be as tight as possible if not
+  precise. Implementations of this method should be near constant time
+  and should not require realizing the spec in question.
+
+  Shelves must implement this method.
+
+  By default throws `me.arrdem.UnimplementedOperationException`."
+  {:categories #{::query}
+   :stability  :stability/unstable
+   :added      "0.0.1"
+   :arglists   '([conn spec])}
+  #'dx)
+
+(required! count-spec)
 
 ;; ID tools
 ;;--------------------------------------------------------------------------------------------------
@@ -520,6 +558,24 @@
   #'dx)
 
 (required! enumerate-rel)
+
+(defmulti count-rel
+  "Returns an upper bound on the cardinality of a given relation.
+
+  The bound should be as tight as possible if not
+  precise. Implementations of this method should be near constant time
+  and should not require realizing the rel in question.
+
+  Shelves must implement this method.
+
+  By default throws `me.arrdem.UnimplementedOperationException`."
+  {:categories #{::query}
+   :stability  :stability/unstable
+   :added      "0.0.1"
+   :arglists   '([conn rel-id])}
+  #'dx)
+
+(required! count-rel)
 
 (defmulti relate-by-id
   "Given a rel(ation) and the ID of an record of the from-rel spec,

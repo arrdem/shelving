@@ -19,14 +19,14 @@ identifiers which may be updated. Records can be inserted, updated and removed.
 In keeping with Clojure's focus on data, Shelving also supports content or <span name="values">**"value"**</span>
 storage of immutable objects. Values can only be inserted.
 
-## [shelving.core/enumerate-specs](/src/main/clj/shelving/core.clj#L131)
+## [shelving.core/enumerate-specs](shelving/core.clj#L152)
  - `(enumerate-specs conn)`
 
 Enumerates all the known specs.
 
 Shelves may provide alternate implementations of this method.
 
-## [shelving.core/enumerate-spec](/src/main/clj/shelving/core.clj#L144)
+## [shelving.core/enumerate-spec](shelving/core.clj#L165)
  - `(enumerate-spec conn spec)`
 
 Enumerates all the known records of a spec by UUID.
@@ -35,23 +35,23 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/empty-schema](/src/main/clj/shelving/core.clj#L251)
+## [shelving.core/empty-schema](shelving/core.clj#L259)
 
 The empty Shelving schema.
 
 Should be used as the basis for all user-defined schemas.
 
-## [shelving.core/has-spec?](/src/main/clj/shelving/core.clj#L283)
+## [shelving.core/has-spec?](shelving/core.clj#L291)
  - `(has-spec? schema spec)`
 
 Helper used for preconditions.
 
-## [shelving.core/is-value?](/src/main/clj/shelving/core.clj#L296)
+## [shelving.core/is-value?](shelving/core.clj#L304)
  - `(is-value? schema spec)`
 
 True if and only if the spec exists and is a `:value` spec.
 
-## [shelving.core/value-spec](/src/main/clj/shelving/core.clj#L309)
+## [shelving.core/value-spec](shelving/core.clj#L317)
  - `(value-spec schema spec & {:as opts})`
 
 Enters a new "value" spec into a schema, returning a new schema.
@@ -60,24 +60,24 @@ Values are addressed by a content hash derived ID, are unique and cannot be dele
 
 Values may be related to other values via schema rel(ation)s. Records may relate to values, but values cannot relate to records except through reverse lookup on a record to value relation.
 
-## [shelving.core/is-record?](/src/main/clj/shelving/core.clj#L339)
+## [shelving.core/is-record?](shelving/core.clj#L347)
  - `(is-record? schema spec)`
 
 True if and only if the spec exists and is a record spec.
 
-## [shelving.core/record-spec](/src/main/clj/shelving/core.clj#L352)
+## [shelving.core/record-spec](shelving/core.clj#L360)
  - `(record-spec schema spec & {:as opts})`
 
 Enters a new "record" spec into a schema, returning a new schema.
 
 Records have traditional place semantics and are identified by randomly generated IDs, rather than the structural semantics ascribed to values.
 
-## [shelving.core/id-for-record](/src/main/clj/shelving/core.clj#L379)
+## [shelving.core/id-for-record](shelving/core.clj#L387)
  - `(id-for-record schema spec val)`
 
 Returns the `val`'s identifying UUID according to the spec's schema entry.
 
-## [shelving.core/schema->specs](/src/main/clj/shelving/core.clj#L396)
+## [shelving.core/schema->specs](shelving/core.clj#L404)
  - `(schema->specs schema)`
 
 Helper used for converting a schema record to a set of specs for storage.

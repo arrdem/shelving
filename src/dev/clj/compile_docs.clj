@@ -8,7 +8,8 @@
   {::sh/basic  (io/file "docs/basic.md")
    ::sh/schema (io/file "docs/schema.md")
    ::sh/rel    (io/file "docs/rel.md")
-   ::sh/util   (io/file "docs/helpers.md")})
+   ::sh/util   (io/file "docs/helpers.md")
+   ::sh/query  (io/file "docs/queries.md")})
 
 (defn ensure-trailing-newline [s]
   (if-not (.endsWith s "\n")
@@ -19,7 +20,8 @@
 
 (defn compile-docs [category-map nss]
   (let [vars (for [ns              nss
-                   :let            [ns (if-not (instance? clojure.lang.Namespace ns)
+                   :let            [_ (require ns :reload)
+                                    ns (if-not (instance? clojure.lang.Namespace ns)
                                          (the-ns ns) ns)]
                    [sym maybe-var] (ns-publics ns)
                    :when           (instance? clojure.lang.Var maybe-var)]
@@ -57,3 +59,6 @@
       (spit f truncated)))
 
   (compile-docs category-map nss))
+
+(defn recompile-docs! [& args]
+  (recompile-docs category-map '[shelving.core shelving.query]))
