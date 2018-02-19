@@ -9,7 +9,9 @@
    ::sh/schema (io/file "docs/schema.md")
    ::sh/rel    (io/file "docs/rel.md")
    ::sh/util   (io/file "docs/helpers.md")
-   ::sh/query  (io/file "docs/queries.md")})
+   ::sh/query  (io/file "docs/queries.md")
+   ::sh/spec   (io/file "docs/spec.md")
+   ::sh/walk   (io/file "docs/walk.md")})
 
 (defn ensure-trailing-newline [s]
   (if-not (.endsWith s "\n")
@@ -61,4 +63,8 @@
   (compile-docs category-map nss))
 
 (defn recompile-docs! [& args]
-  (recompile-docs category-map '[shelving.core shelving.query]))
+  (recompile-docs category-map
+                  '[shelving.core
+                    shelving.query
+                    shelving.spec
+                    shelving.walk]))

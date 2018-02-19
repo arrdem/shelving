@@ -14,7 +14,9 @@
    :added   "0.0.0"}
   (:refer-clojure :exclude [flush get])
   (:require [clojure.spec.alpha :as s]
-            [hasch.core :refer [uuid]])
+            [detritus.update :refer [fix]]
+            [hasch.core :refer [uuid]]
+            [shelving.spec :refer [subspecs]])
   (:import java.nio.ByteBuffer
            java.util.UUID
            me.arrdem.UnimplementedOperationException))
@@ -399,15 +401,54 @@
 
 (s/fdef schema->specs
         :args (s/cat :schema ::schema)
-        :ret (s/coll-of #(s/valid? ::spec %) :kind set?))
+        :ret (s/coll-of (s/tuple ::spec
+                                 (s/or :kw ::spec
+                                       :form list?))))
 
 (defn schema->specs
-  "Helper used for converting a schema record to a set of specs for storage."
+  "Helper used for converting a schema record to a fully resolved spec serialization for storage."
   {:categories #{::schema}
    :stability  :stability/stable
    :added      "0.0.0"}
   [schema]
-  (-> schema :specs keys set))
+  (loop [[s & specs* :as specs] (-> schema :specs keys)
+         acc                    {}
+         seen                   #{}] 
+    (if (empty? specs) acc
+        (if s
+          (let [seen* (conj seen s)
+                s*    (s/describe* (s/get-spec s))]
+            (recur (remove seen*
+                           (concat specs*
+                                   (fix #(mapcat subspecs %) [s*])))
+                   (assoc acc s (-> (clojure.core/get schema s {:type ::spec :record? true})
+                                    (dissoc :id-fn)
+                                    (assoc :def s*)))
+                   seen*))
+          (recur specs* acc seen)))))
+
+(defn check-specs!
+  "Helper for use in checking compatibility between database persistable specs.
+  Because proving equivalence on specs is basically impossible, we'll start with equality."
+  {:categories #{::schema}
+   :stability  :stability/stable
+   :added      "0.0.0"}
+  [persisted live]
+  (doseq [s     (keys live)
+          :let  [ls (clojure.core/get live s)
+                 ps (clojure.core/get persisted s)]
+          :when persisted]
+    (when-not (= (:record? ls) (:record? ps))
+      (throw (ex-info "Incompatible schemas - `:record?` differs!"
+                      {:live      ls
+                       :persisted ps})))
+
+    ;; FIXME (arrdem 2018-02-19):
+    ;;   This could make some attempt to be more general.
+    (when-not (= (:def ls) (:def ps))
+      (throw (ex-info "Incompatible schemas - `:def` differs!"
+                      {:live      ls
+                       :persisted ps})))))
 
 ;; Relations
 ;;--------------------------------------------------------------------------------------------------
@@ -637,19 +678,20 @@
    :stability  :stability/stable
    :added      "0.0.0"}
   [{:keys [specs rels] :as schema}]
-  (-> (concat (mapcat (fn [[spec-id {spec-is-record? :record? spec-rels :rels}]]
-                        (when-not spec-is-record?
-                          (keep (fn [[from-spec to-spec]]
-                                  (when (and (= from-spec spec-id)
-                                             (is-record? schema to-spec))
-                                    (format "Illegal relation - cannot relate value spec %s to record spec %s"
-                                            from-spec to-spec)))
-                                spec-rels)))
-                      specs)
-              (-> (mapcat (fn [specs]
-                            (keep #(when-not (has-spec? schema %)
-                                     (format "Illegal relation %s - unknown spec %s" specs %))
-                                  specs))
-                          (keys rels))
-                  set seq))
+  (-> (concat
+       (mapcat (fn [[spec-id {spec-is-record? :record? spec-rels :rels}]]
+                 (when-not spec-is-record?
+                   (keep (fn [[from-spec to-spec]]
+                           (when (and (= from-spec spec-id)
+                                      (is-record? schema to-spec))
+                             (format "Illegal relation - cannot relate value spec %s to record spec %s"
+                                     from-spec to-spec)))
+                         spec-rels)))
+               specs)
+       (-> (mapcat (fn [specs]
+                     (keep #(when-not (has-spec? schema %)
+                              (format "Illegal relation %s - unknown spec %s" specs %))
+                           specs))
+                   (keys rels))
+           set seq))
       seq))

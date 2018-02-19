@@ -3,32 +3,31 @@
   {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [clojure.core.match :refer [match]]
+            [shelving.spec :refer [keys-as-map]]))
 
-(defn keys-as-map
-  "Implementation detail of `#'walk-with-spec`.
-
-  Consumes a complete s/keys form, producing a map from map keys to
-  the spec for that key.
-
-  Imposes the restriction that there be PRECISELY ONE spec for any
-  given key. Will throw otherwise."
-  [keys-form]
-  (let [[_keys & {:keys [req req-un opt opt-un] :as opts}] keys-form]
-    (->> (concat (mapcat (juxt #(keyword (name %)) identity) (concat req-un opt-un))
-                 (mapcat (juxt identity identity) (concat req opt)))
-         (apply hash-map))))
+;; Not a require to avoid a cyclic dependency
+(alias 'sh 'shelving.core)
 
 (declare walk-with-spec)
 
-(def ^:dynamic *trace-walk*
+(def ^{:dynamic    true
+       :categories #{::sh/walk}
+       :stability  :stability/unstable
+       :added      "0.0.0"
+       :doc        "Dynamic variable controlling whether `#'walk-with-spec` logs its progress to `*err*`."}
+  *trace-walk*
   false)
 
 (defmulti walk-with-spec*
   "Implementation detail of walk-with-spec.
 
   Uses multiple dispatch to handle actually walking the spec tree."
-  {:arglists '([spec-kw spec obj before after])}
+  {:categories #{::sh/walk}
+   :stability  :stability/unstable
+   :added      "0.0.0"
+   :arglists   '([spec-kw spec obj before after])}
   (fn [name spec _ _ _]
     (when *trace-walk*
       (binding [*out* *err*]
@@ -175,6 +174,9 @@
   If an `Exception` is thrown while traversing, no teardown is
   provided. `before` functions SHOULD NOT rely on `after` being called
   to maintain global state."
+  {:categories #{::sh/walk}
+   :stability  :stability/unstable
+   :added      "0.0.0"}
   [before after spec-kw obj]
   {:pre [(qualified-keyword? spec-kw)
          (s/valid? spec-kw obj)]}
@@ -186,6 +188,9 @@
   "A postwalk according to the spec.
 
   See `#'walk-with-spec` for details."
+  {:categories #{::sh/walk}
+   :stability  :stability/unstable
+   :added      "0.0.0"}
   [f spec-kw obj]
   (walk-with-spec just-value f spec-kw obj))
 
@@ -193,5 +198,8 @@
   "A prewalk according to the spec.
 
   See `#'walk-with-spec` for details."
+  {:categories #{::sh/walk}
+   :stability  :stability/unstable
+   :added      "0.0.0"}
   [f spec-kw obj]
   (walk-with-spec f just-value spec-kw obj))

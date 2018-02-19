@@ -14,28 +14,25 @@
   (when-not load
     (binding [*out* *err*]
       (println "Warning: opening connection without trying to load existing data set!")))
-  (let [state            (-> (if (and load
-                                      (.exists (io/file path)))
-                               (-> path
-                                   io/reader
-                                   java.io.PushbackReader.
-                                   edn/read
-                                   ((fn [v] (assert (map? v)) v)))
-                               {})
-                             atom)
-        conn             (-> s
-                             (assoc :type ::shelf)
-                             (assoc ::state state))
-        persisted-schema (-> state deref :schema)]
-    ;; Validate that the new schema supersets the old
-    (if (and persisted-schema
-             (not (superset? (sh/schema->specs schema) persisted-schema)))
-      ;; If we have a mismatch, throw
-      (throw (ex-info "Persisted schema does not validate against loaded schema!"
-                      {:persisted  persisted-schema
-                       :configured (sh/schema->specs schema)}))
-      ;; Install the schema in a new db
-      (swap! state assoc :schema (sh/schema->specs schema)))
+  (let [state           (-> (if (and load
+                                     (.exists (io/file path)))
+                              (-> path
+                                  io/reader
+                                  java.io.PushbackReader.
+                                  edn/read
+                                  ((fn [v] (assert (map? v)) v)))
+                              {})
+                            atom)
+        conn            (-> s
+                            (assoc :type ::shelf)
+                            (assoc ::state state))
+        persisted-specs (-> state deref :schema)
+        our-specs       (sh/schema->specs schema)]
+    ;; Check the persisted schema
+    (sh/check-specs! persisted-specs our-specs)
+    
+    ;; Install the schema updates in a new db 
+    (swap! state update :schema merge our-specs)
 
     ;; Validate any loaded data
     (doseq [spec (sh/enumerate-specs conn)
