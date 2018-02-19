@@ -3,21 +3,28 @@
   {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
-  (:require [clojure.core.match :refer [match]]
-            [clojure.spec.alpha :as s]
+  (:require [clojure.spec.alpha :as s]
+            [clojure.test.check.generators :as gen]
             [shelving.core :as sh]
             [shelving.query.common :refer [lvar?]]))
 
-(s/def ::lvar+spec
-  (s/tuple #{:from} qualified-keyword? lvar?))
-
 (s/def ::lvar
-  (s/or :unspecd lvar?
+  (s/with-gen
+    lvar?
+    #(gen/fmap (fn [s]
+                 (symbol (str "?" s)))
+               (s/gen simple-symbol?))))
+
+(s/def ::lvar+spec
+  (s/tuple #{:from} qualified-keyword? ::lvar))
+
+(s/def ::lvar+spec?
+  (s/or :unspecd ::lvar
         :specd   ::lvar+spec))
 
 (s/def ::lvars
-  (s/alt :inline (s/+ ::lvar)
-         :wrapped (s/coll-of ::lvar)))
+  (s/alt :inline (s/+ ::lvar+spec?)
+         :wrapped (s/coll-of ::lvar+spec?)))
 
 (s/def ::find
   (s/cat :find #{:find}
@@ -28,10 +35,10 @@
          :parameters ::lvars))
 
 (s/def ::full-tuple
-  (s/tuple lvar? ::sh/rel-id some?))
+  (s/tuple ::lvar ::sh/rel-id some?))
 
 (s/def ::terse-tuple
-  (s/tuple lvar? qualified-keyword? some?))
+  (s/tuple ::lvar qualified-keyword? some?))
 
 (s/def ::tuple
   (s/or :explicit-rel ::full-tuple
@@ -48,8 +55,8 @@
 
 (s/def ::clause
   (s/or :tuple ::tuple
-        #_:guard #_::guard
-        #_:negation #_::negation))
+        :guard ::guard
+        :negation ::negation))
 
 (s/def ::clauses
   (s/alt :wrapped (s/coll-of ::clause)
