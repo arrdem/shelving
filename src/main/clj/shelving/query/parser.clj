@@ -8,7 +8,7 @@
             [shelving.core :as sh]
             [shelving.query.common :refer [lvar?]]))
 
-(s/def ::lvar
+(s/def :shelving.query.parser/lvar
   (s/with-gen
     lvar?
     #(gen/fmap (fn [s]
@@ -66,22 +66,50 @@
   (s/cat :where #{:where}
          :rels ::clauses))
 
-(s/def ::seq-datalog
-  (s/cat :find  ::find
-         :in    (s/? ::in)
-         :where (s/? ::where)))
+;; seq-style datalog
 
-(defn- parse-datalog
+(defn- parse-datalog-seq
   "Provides a datalog front end to the Shelving query system."
-  [seq]
-  (let [v (s/conform ::seq-datalog seq)]
-    (if (= v ::s/invalid) v
-        (let [{{find :symbols}  :find
-               {where :rels}    :where
-               {in :parameters} :in} v]
-          {:find  (second find)
-           :where (second where)
-           :in    (second in)}))))
+  [v]
+  (if (= v ::s/invalid) v
+      (let [{{find :symbols}  :find
+             {where :rels}    :where
+             {in :parameters} :in} v]
+        {:find  (second find)
+         :where (second where)
+         :in    (second in)})))
+
+(s/def :shelving.query.parser.seq/datalog
+  (s/and (s/cat :find  ::find
+                :in    (s/? ::in)
+                :where (s/? ::where))
+         (s/conformer parse-datalog-seq)))
+
+;; map-style datalog
+
+(s/def :shelving.query.parser.map/find
+  ::lvars)
+
+(s/def :shelving.query.parser.map/in
+  ::lvars)
+
+(s/def :shelving.query.parser.map/where
+  ::clauses)
+
+(defn- parse-datalog-map [{:keys [find in where]}]
+  {:find  (second find)
+   :in    (second in)
+   :where (second where)})
+
+(s/def :shelving.query.parser.map/datalog
+  (s/and (s/keys :req-un [:shelving.query.parser.map/find]
+                 :opt-un [:shelving.query.parser.map/in
+                          :shelving.query.parser.map/where])
+         (s/conformer parse-datalog-map)))
+
+;; expose both styles as ::datalog
 
 (s/def ::datalog
-  (s/conformer parse-datalog))
+  (s/and (s/or :seq :shelving.query.parser.seq/datalog
+               :map :shelving.query.parser.map/datalog)
+         (s/conformer (fn [[tag val]] val))))
