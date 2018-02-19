@@ -13,30 +13,31 @@
   :shelving.query.parser.seq/datalog)
 
 (t/deftest test-query-parser-examples
-  (t/are [q] (s/valid? ::p/datalog (quote q)) 
-    [:find ?foo]
-    [:find [?foo]]
-    {:find [?foo]}
+  (t/testing "A bunch of hand examples before we get to the test queries"
+    (t/are [q] (s/valid? ::p/datalog (quote q)) 
+      [:find ?foo]
+      [:find [?foo]]
+      {:find [?foo]}
 
-    [:find ?foo
-     :in ?bar]
-    [:find [?foo]
-     :in   [?bar]]
-    {:find [?foo]
-     :in   [?bar]}
+      [:find ?foo
+       :in ?bar]
+      [:find [?foo]
+       :in   [?bar]]
+      {:find [?foo]
+       :in   [?bar]}
 
-    [:find  [?foo]
-     :in    [[:from ::bar ?b]]
-     :where [[?foo [::foo ::bar] ?b]]]
-    {:find  [?foo]
-     :in    [[:from ::bar ?b]]
-     :where [[?foo [::foo ::bar] ?b]]}
+      [:find  [?foo]
+       :in    [[:from ::bar ?b]]
+       :where [[?foo [::foo ::bar] ?b]]]
+      {:find  [?foo]
+       :in    [[:from ::bar ?b]]
+       :where [[?foo [::foo ::bar] ?b]]}
 
-    [:find  [?foo]
-     :in    [[:from ::bar ?b]]
-     :where [[?foo [::foo ::bar] ?b]
-             (:guard #(.endsWith % "foo") ?b)
-             (:not [?foo [::foo ::bar] "c"])]]))
+      [:find  [?foo]
+       :in    [[:from ::bar ?b]]
+       :where [[?foo [::foo ::bar] ?b]
+               (:guard #(.endsWith % "foo") ?b)
+               (:not [?foo [::foo ::bar] "c"])]])))
 
 (t/deftest test-query-normal-form
   (t/testing "Seq and Map queries should round-trip through the same normal form."
