@@ -15,3 +15,11 @@
   (and (symbol? obj)
        (.startsWith (name obj) "?")
        (not (namespace obj))))
+
+(def ^{:stability  :stability/unstable
+       :categories #{::sh/query}
+       :added      "0.0.0"
+       :doc        "Predicate indicating whether Shelving recognizes this value as a possible spec."
+       :arglists   (:arglists (meta #'qualified-keyword?))}
+  spec?
+  #'qualified-keyword?)

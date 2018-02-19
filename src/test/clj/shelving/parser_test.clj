@@ -33,11 +33,11 @@
        :in    [[:from ::bar ?b]]
        :where [[?foo [::foo ::bar] ?b]]}
 
-      [:find  [?foo]
-       :in    [[:from ::bar ?b]]
-       :where [[?foo [::foo ::bar] ?b]
-               (:guard #(.endsWith % "foo") ?b)
-               (:not [?foo [::foo ::bar] "c"])]])))
+      #_[:find  [?foo]
+         :in    [[:from ::bar ?b]]
+         :where [[?foo [::foo ::bar] ?b]
+                 (:guard #(.endsWith % "foo") ?b)
+                 (:not [?foo [::foo ::bar] "c"])]])))
 
 (t/deftest test-query-normal-form
   (t/testing "Seq and Map queries should round-trip through the same normal form."

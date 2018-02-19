@@ -6,7 +6,7 @@
   (:require [clojure.string :as str]
             [clojure.core.match :refer [match]]
             [shelving.core :as sh]
-            [shelving.query.common :refer [lvar?]]))
+            [shelving.query.common :refer [lvar? spec?]]))
 
 (defn- put-spec!
   "Helper for ascribing types to lvars.
@@ -28,7 +28,7 @@
              (not= current-spec ::hole)
              (= ascribed-spec ::hole))
         current-spec
-        
+
         :else
         ascribed-spec))
 
@@ -49,7 +49,7 @@
         depmap              (volatile! depmap)
         k*                  (mapv (fn [clause]
                                     (match clause
-                                      [:specd [:from (spec :guard qualified-keyword?) (lvar :guard lvar?)]]
+                                      [:specd [:from (spec :guard spec?) (lvar :guard lvar?)]]
                                       (do (vswap! depmap ascribe-spec! lvar spec)
                                           lvar)
 
@@ -92,7 +92,7 @@
   (let [depmap (volatile! depmap)
         where* (mapv (fn [clause]
                        (match [clause]
-                         [[:tuple [:inferred-rel [lhs (spec :guard qualified-keyword?) rhs]]]]
+                         [[:tuple [:inferred-rel [lhs (spec :guard spec?) rhs]]]]
                          (do (when (lvar? lhs)
                                ;; Ensure the lhs exists by ascribing it ::hole if it doesn't exist
                                (vswap! depmap ascribe-spec! lhs ::hole))
@@ -127,7 +127,7 @@
   [{:keys [depmap where] :as query}]
   (let [where* (mapv (fn [clause]
                        (match clause
-                         [(lhs :guard lvar?) [::hole (to-spec :guard qualified-keyword?)] rhs]
+                         [(lhs :guard lvar?) [::hole (to-spec :guard spec?)] rhs]
                          [lhs [(-> (get depmap lhs) (get :spec ::hole)) to-spec] rhs]
 
                          [lhs [(fs :guard qualified-keyword?) (ts :guard qualified-keyword?)] rhs]

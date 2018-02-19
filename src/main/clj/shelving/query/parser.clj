@@ -48,15 +48,22 @@
              :clause clause}))))
 
 (s/def ::guard
-  (s/cat :guard #{:guard}
-         :fn (s/with-gen (constantly true)  ;; FIXME lolsob
-               #(s/gen #{'clojure.core/even? 'clojure.core/odd?}))
-         :lvars (s/* ::lvar)))
+  (s/and (s/cat :guard #{:guard}
+                :fn (s/with-gen (constantly true)  ;; FIXME lolsob
+                      #(s/gen #{'clojure.core/even? 'clojure.core/odd?}))
+                :lvars (s/* ::lvar))
+         (s/conformer
+          (fn [{:keys [fn lvars]}]
+            (cons fn lvars))
+          (fn [[fn & lvars]]
+            {:guard :guard
+             :fn    fn
+             :lvars lvars}))))
 
 (s/def ::clause
   (s/or :tuple ::tuple
-        :guard ::guard
-        :negation ::negation))
+        #_:guard #_::guard
+        #_:negation #_::negation))
 
 (s/def ::clauses
   (s/alt :wrapped (s/coll-of ::clause :into [])
