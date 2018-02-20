@@ -4,13 +4,14 @@
    :license "Eclipse Public License 1.0"
    :added   "0.1.0"}
   (:require [shelving.core :as sh]
+            [shelving.impl :as imp]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
             [clojure.set :refer [superset?]]))
 
 ;; Configs open into shelves
-(defmethod sh/open ::config [{:keys [path schema load] :as s}]
+(defmethod imp/open ::config [{:keys [path schema load] :as s}]
   (when-not load
     (binding [*out* *err*]
       (println "Warning: opening connection without trying to load existing data set!")))
@@ -48,13 +49,13 @@
     conn))
 
 ;; EDN shelves don't have write batching and are always open.
-(defmethod sh/open ::shelf [s] s)
+(defmethod imp/open ::shelf [s] s)
 
-(defmethod sh/schema ::shelf [{:keys [schema]}]
+(defmethod imp/schema ::shelf [{:keys [schema]}]
   schema)
 
 ;; EDN shelves don't have write batching and don't have to be closed.
-(defmethod sh/flush ::shelf [{:keys [shelving.trivial-edn/state path]}]
+(defmethod imp/flush ::shelf [{:keys [shelving.trivial-edn/state path]}]
   (let [file (io/file path)]
     (if-let [parent (.getParentFile file)]
       (.mkdirs parent))
@@ -64,10 +65,10 @@
                 clojure.core/*print-readably*       true]
         (pr @state)))))
 
-(defmethod sh/close ::shelf [s]
+(defmethod imp/close ::shelf [s]
   (sh/flush s))
 
-(defmethod sh/get ::shelf
+(defmethod imp/get ::shelf
   ([conn spec record-id]
    (sh/get conn spec record-id nil))
   ([{:keys [shelving.trivial-edn/state]} spec record-id not-found]
@@ -149,7 +150,7 @@
 (defn- put-val* [{:keys [schema] :as conn} spec val]
   (put-record* conn spec (sh/id-for-record schema spec val) val))
 
-(defmethod sh/put ::shelf
+(defmethod imp/put ::shelf
   ([{:keys [schema flush-after-write] :as conn} spec val]
    (let [id (if (sh/is-value? schema spec)
               (put-val* conn spec val)
@@ -166,19 +167,19 @@
        (sh/flush conn))
      id)))
 
-(defmethod sh/enumerate-spec ::shelf [{:keys [shelving.trivial-edn/state]} spec]
+(defmethod imp/enumerate-spec ::shelf [{:keys [shelving.trivial-edn/state]} spec]
   (some-> @state (get :records) (get spec) keys))
 
-(defmethod sh/count-spec ::shelf [{:keys [shelving.trivial-edn/state]} spec]
+(defmethod imp/count-spec ::shelf [{:keys [shelving.trivial-edn/state]} spec]
   (or (some-> @state (get :records) (get spec) keys count) 0))
 
-(defmethod sh/enumerate-rel ::shelf [{:keys [shelving.trivial-edn/state]} rel]
+(defmethod imp/enumerate-rel ::shelf [{:keys [shelving.trivial-edn/state]} rel]
   (some-> @state (get :rels) (get rel) (get :pairs) seq))
 
-(defmethod sh/count-rel ::shelf [{:keys [shelving.trivial-edn/state schema]} rel]
+(defmethod imp/count-rel ::shelf [{:keys [shelving.trivial-edn/state schema]} rel]
   (or (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) :pairs count) 0))
 
-(defmethod sh/relate-by-id ::shelf [{:keys [shelving.trivial-edn/state schema]} [from-spec to-spec :as rel] id]
+(defmethod imp/relate-by-id ::shelf [{:keys [shelving.trivial-edn/state schema]} [from-spec to-spec :as rel] id]
   (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) (get from-spec) (get id) seq))
 
 (defn ->TrivialEdnShelf

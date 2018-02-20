@@ -68,11 +68,13 @@
   (flush t))
 
 (defmulti get
-  "Fetches a record from a shelf by its spec and ID.
+  "Fetches a single tuple, being part of a record, from a shelf by its spec and ID.
 
   Returns the record if it exists, otherwise returning the
   user-provided `not-found` value, taken to be `nil` by default.
 
+  Implementation detail of `#'shelving.core/get`, which should be preferred by users.
+  
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
@@ -101,15 +103,25 @@
   (let [not-found (Object.)]
     (not= not-found (get conn spec record-id not-found))))
 
+(defn decompose
+  "Decompose a record (or value) into its constituent tuples for storage.
+
+  Implementation detail of
+  `#'shelving.core/put`. `#'shelving.impl/put` expects fully
+  decomposed tuples of this form."
+  {:categories #{::basic}
+   :stability  :stability/unstable
+   :added      "0.0.0"}
+  [schema spec obj]
+  )
+
 (defmulti put
-  "Enters a record into a shelf according to its spec in the schema,
-  inserting substructures and updating all relevant rel(ation)s.
+  "The \"raw\" put operation. Inserts a fully decomposed value (tuple)
+  into the designated spec, returning the ID at which it was inserted
+  if an ID was not provided.
 
-  For shelves storing \"records\" not \"values\", the `id` parameter
-  may be used to either control the ID of the record, say for
-  achieving an upsert.
-
-  It is an error to specify the ID when inserting into a \"value\" shelf.
+  Users should universally prefer `#'shelving.core/put`. This method
+  is an unprotected implementation detail not for general use.
 
   Shelves must implement this method.
 
@@ -117,8 +129,7 @@
   {:categories #{::basic}
    :stability  :stability/stable
    :added      "0.0.0"
-   :arglists   '([conn spec val]
-                 [conn spec id val])}
+   :arglists   '([conn spec id val])}
   #'dx)
 
 (required! put)
