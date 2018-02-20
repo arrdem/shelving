@@ -32,8 +32,8 @@
             conn (sh/open cfg)]
 
         (t/testing "Conn has correct spec/schema information"
-          (t/is (= '(::foo ::baz)
-                   (sh/enumerate-specs conn))))
+          (t/is (= #{::foo ::bar ::baz}
+                   (set (sh/enumerate-specs conn)))))
 
         (t/testing "Testing put/get/has? on values"
           (let [v1 (sgen/generate foo-gen)
@@ -69,8 +69,7 @@
         baz-gen (s/gen ::baz)
         schema  (-> sh/empty-schema
                     (sh/value-spec ::foo)
-                    (sh/value-spec ::baz)
-                    (sh/spec-rel [::baz ::foo] :foo))
+                    (sh/value-spec ::baz))
         conn    (sh/open (->cfg schema))]
     (tc/quick-check 100
       (prop/for-all [baz baz-gen]
@@ -88,8 +87,7 @@
         baz-gen (s/gen ::baz)
         schema  (-> sh/empty-schema
                     (sh/value-spec ::foo)
-                    (sh/record-spec ::baz)
-                    (sh/spec-rel [::baz ::foo] :foo))
+                    (sh/record-spec ::baz))
         conn    (sh/open (->cfg schema))]
     (tc/quick-check 100
       (prop/for-all [baz  baz-gen

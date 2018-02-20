@@ -4,13 +4,13 @@
 
 Dynamic variable controlling whether `#'walk-with-spec` logs its progress to `*err*`.
 
-## [shelving.walk/*trace-walk*](shelving/walk.clj#L15)
+## [shelving.spec.walk/*trace-walk*](shelving/spec/walk.clj#L15)
 
 **UNSTABLE**: This API will probably change in the future
 
 Dynamic variable controlling whether `#'walk-with-spec` logs its progress to `*err*`.
 
-## [shelving.walk/walk-with-spec*](shelving/walk.clj#L23)
+## [shelving.spec.walk/walk-with-spec*](shelving/spec/walk.clj#L23)
  - `(walk-with-spec* spec-kw spec obj before after)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -19,7 +19,7 @@ Implementation detail of walk-with-spec.
 
 Uses multiple dispatch to handle actually walking the spec tree.
 
-## [shelving.walk/walk-with-spec](shelving/walk.clj#L149)
+## [shelving.spec.walk/walk-with-spec](shelving/spec/walk.clj#L149)
  - `(walk-with-spec before after spec-kw obj)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -38,7 +38,7 @@ Note: predicates are considered to be terminals. No effort is currently made to 
 
 If an `Exception` is thrown while traversing, no teardown is provided. `before` functions SHOULD NOT rely on `after` being called to maintain global state.
 
-## [shelving.walk/postwalk-with-spec](shelving/walk.clj#L187)
+## [shelving.spec.walk/postwalk-with-spec](shelving/spec/walk.clj#L187)
  - `(postwalk-with-spec f spec-kw obj)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -47,7 +47,7 @@ A postwalk according to the spec.
 
 See `#'walk-with-spec` for details.
 
-## [shelving.walk/prewalk-with-spec](shelving/walk.clj#L197)
+## [shelving.spec.walk/prewalk-with-spec](shelving/spec/walk.clj#L197)
  - `(prewalk-with-spec f spec-kw obj)`
 
 **UNSTABLE**: This API will probably change in the future

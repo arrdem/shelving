@@ -4,7 +4,8 @@
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:require [clojure.spec.alpha :as s]
-            [clojure.core.match :refer [match]]))
+            [clojure.core.match :refer [match]]
+            [detritus.update :refer [fix]]))
 
 ;; Not a require to avoid a cyclic dependency
 (alias 'sh 'shelving.core)
@@ -26,9 +27,9 @@
                  (mapcat (juxt identity identity) (concat req opt)))
          (apply hash-map))))
 
-(defn subspecs
-  "Given a `s/describe*` structure, return the subspecs (keyword
-  identifiers and predicate forms) of the spec."
+(defn pred->preds
+  "Given a `s/describe*` or 'pred' structure, return its component
+  preds (keyword identifiers and predicate forms)."
   {:categories #{::sh/spec}
    :stability  :stability/unstable
    :added      "0.0.0"}
@@ -46,7 +47,45 @@
     ([(:or `s/map-of `s/every-kv) k-pred v-pred] :seq) [k-pred v-pred]
     ([`s/tuple & preds] :seq) preds))
 
+(defn subspec-pred-seq
+  "Given a keyword naming a spec, return the depth-first .
+
+  Does not recur across spec keywords."
+  {:categories #{::sh/spec}
+   :stability  :stability/unstable
+   :added      "0.0.0"}
+  [s]
+  (let [s* (or (s/get-spec s) ::s/unknown)]
+    (when (= s* ::s/unknown)
+      (throw (ex-info (format "Unable to resolve specs! Spec '%s' is unknown" s) {})))
+    (let [s* (s/describe* s*)]
+      (tree-seq seq? pred->preds s*))))
+
+(defn spec-seq
+  "Given a keyword naming a spec, recursively return a sequence of the
+  distinct keywords naming the subspecs of that spec. The returned
+  sequence includes the original spec.
+
+  Throws if a `::s/unknown` spec is encountered.
+
+  Named for `#'file-seq`."
+  {:categories #{::sh/spec}
+   :stability  :stability/unstable
+   :added      "0.0.0"}
+  [s & specs]
+  (loop [[s & specs* :as specs] (cons s specs)
+         acc                    []
+         seen?                  #{}]
+    (if (empty? specs) acc
+        (if (and s (not (seen? s)))
+          (if (qualified-keyword? s)
+            (recur (concat specs* (filter qualified-keyword? (subspec-pred-seq s)))
+                   (conj acc s)
+                   (conj seen? s))
+            (recur (concat specs* (filter qualified-keyword? (subspec-pred-seq s))) acc seen?))
+          (recur specs* acc seen?)))))
+
 ;; FIXME (arrdem 2018-02-19):
-;; 
+;;
 ;;   spec "equivalence" checker? At least being able to show that `s/keys` forms subset or superset
 ;;   each-other would be nice and useful.

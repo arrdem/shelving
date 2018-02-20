@@ -17,9 +17,7 @@
   (-> sh/empty-schema
       (sh/value-spec ::foo)
       (sh/value-spec ::qux)
-      (sh/value-spec ::bar)
-      (sh/spec-rel [::bar ::foo] :foo)
-      (sh/spec-rel [::bar ::qux] :qux)))
+      (sh/value-spec ::bar)))
 
 (t/deftest examples-test 
   (let [*conn (-> (->TrivialEdnShelf schema "target/query-test.edn"

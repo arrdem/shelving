@@ -62,9 +62,11 @@
 
   (compile-docs category-map nss))
 
-(defn recompile-docs! [& args]
+(defn recompile-docs!
+  "Entry point suitable for a lein alias. Usable for automating doc rebuilding."
+  [& args]
   (recompile-docs category-map
                   '[shelving.core
                     shelving.query
                     shelving.spec
-                    shelving.walk]))
+                    shelving.spec.walk]))

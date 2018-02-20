@@ -9,7 +9,9 @@
                   :exclusions [com.cemerick/austin]]
                  [me.arrdem/detritus "0.3.2"]
                  [org.clojure/core.match "0.3.0-alpha5"]
-                 [org.clojure/core.cache "0.6.5"]]
+                 [org.clojure/core.cache "0.6.5"]
+                 [org.clojure/tools.logging "0.4.0"]
+                 [potemkin "0.4.4"]]
 
   :source-paths      ["src/main/clj"
                       "src/main/cljc"]

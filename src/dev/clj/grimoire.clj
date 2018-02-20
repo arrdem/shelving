@@ -162,10 +162,5 @@
 (def schema
   (-> shelving/empty-schema
       (shelving/value-spec ::package)
-
       (shelving/value-spec ::entity)
-      (shelving/spec-rel  [::entity ::package] entity->package)
-
-      (shelving/record-spec ::annotation)
-      (shelving/spec-rel  [::annotation ::entity] annotation->entity)
-      (shelving/spec-rel  [::annotation ::package] annotation->package)))
+      (shelving/record-spec ::annotation)))

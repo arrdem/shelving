@@ -1,4 +1,4 @@
-(ns shelving.walk
+(ns shelving.spec.walk
   "Tools for using `clojure.spec(.alpha)` to walk data structures."
   {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
    :license "Eclipse Public License 1.0",
