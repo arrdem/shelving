@@ -103,22 +103,10 @@
   (let [not-found (Object.)]
     (not= not-found (get conn spec record-id not-found))))
 
-(defn decompose
-  "Decompose a record (or value) into its constituent tuples for storage.
-
-  Implementation detail of
-  `#'shelving.core/put`. `#'shelving.impl/put` expects fully
-  decomposed tuples of this form."
-  {:categories #{::basic}
-   :stability  :stability/unstable
-   :added      "0.0.0"}
-  [schema spec obj]
-  )
-
-(defmulti put
-  "The \"raw\" put operation. Inserts a fully decomposed value (tuple)
-  into the designated spec, returning the ID at which it was inserted
-  if an ID was not provided.
+(defmulti put-spec
+  "The \"raw\" put operation on values. Inserts a fully decomposed
+  value (tuple) into the designated spec, returning the ID at which it
+  was inserted if an ID was not provided.
 
   Users should universally prefer `#'shelving.core/put`. This method
   is an unprotected implementation detail not for general use.
@@ -132,7 +120,27 @@
    :arglists   '([conn spec id val])}
   #'dx)
 
-(required! put)
+(required! put-spec)
+
+(defmulti put-rel
+  "The \"raw\" put operation on relations.
+
+  Inserts a `[from rel to]` triple into the data store
+  unconditionally.
+
+  Users should universally prefer `#'shelving.core/put`. This method
+  is an unprotected implementation detail not for general use.
+
+  Shelves must implement this method.
+
+  By default throws `me.arrdem.UnimplementedOperationException`."
+  {:categories #{::basic}
+   :stability  :stability/stable
+   :added      "0.0.0"
+   :arglists   '([conn spec rel-id from-id to-id])}
+  #'dx)
+
+(required! put-rel)
 
 (defmulti schema
   "Returns the schema record for a given connection.

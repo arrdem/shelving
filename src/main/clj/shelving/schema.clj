@@ -13,7 +13,8 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.tools.logging :as log]
             [hasch.core :refer [uuid]]
-            [shelving.spec :as ss])
+            [shelving.spec :as ss]
+            [shelving.spec.walk :as s.w])
   (:import java.nio.ByteBuffer
            java.util.UUID
            me.arrdem.UnimplementedOperationException))
@@ -456,3 +457,21 @@
                    (keys rels))
            set seq))
       seq))
+
+(defn decompose
+  "Given a schema, a spec in the schema, a record ID and the record as a
+  value, decompose the record into its direct descendants and relations
+  thereto."
+  [schema spec id val]
+  (let [acc! (volatile! [])]
+    (binding [s.w/*walk-through-aliases* false]
+      (s.w/postwalk-with-spec
+       (fn [subspec subval]
+         (when (and (qualified-keyword? subspec)
+                    (not= spec subspec))
+           (let [id* (id-for-record schema subspec subval)]
+             (vswap! acc! conj [:record subspec id* subval])
+             (vswap! acc! conj [:rel [spec subspec] id id*])))
+         subval)
+       spec val)
+      @acc!)))

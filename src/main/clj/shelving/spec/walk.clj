@@ -48,12 +48,16 @@
     (throw (UnsupportedOperationException.
             (format "Could not walk unknown value '%s'" (pr-str unknown))))))
 
+(def ^:dynamic *walk-through-aliases* true)
+
 (defmethod walk-with-spec* ::alias [spec alias obj before after]
   {:pre [(qualified-keyword? alias)]} 
   (as-> obj %
     (before spec %)
     (do (s/assert spec %) %)
-    (walk-with-spec before after (some-> spec s/get-spec s/describe*) %)
+    (if *walk-through-aliases*
+      (walk-with-spec before after (some-> spec s/get-spec s/describe*) %)
+      %)
     (after spec %)))
 
 (defmethod walk-with-spec* ::predicate [spec pred obj before after]
