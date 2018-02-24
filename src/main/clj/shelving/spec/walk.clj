@@ -182,8 +182,8 @@
    :stability  :stability/unstable
    :added      "0.0.0"}
   [before after spec-kw obj]
-  {:pre [(qualified-keyword? spec-kw)
-         (s/valid? spec-kw obj)]}
+  {:pre [(qualified-keyword? spec-kw)]}
+  (s/assert spec-kw obj)
   (walk-with-spec* spec-kw (some-> spec-kw s/get-spec s/describe*) obj before after))
 
 (defn- just-value [spec o] o)

@@ -68,7 +68,7 @@
 (defmethod imp/close ::shelf [s]
   (sh/flush s))
 
-(defmethod imp/get ::shelf
+(defmethod imp/get-spec ::shelf
   ([conn spec record-id]
    (sh/get conn spec record-id nil))
   ([{:keys [shelving.trivial-edn/state]} spec record-id not-found]
@@ -106,7 +106,7 @@
 (defmethod imp/count-rel ::shelf [{:keys [shelving.trivial-edn/state schema]} rel]
   (or (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) :pairs count) 0))
 
-(defmethod imp/relate-by-id ::shelf [{:keys [shelving.trivial-edn/state schema]} [from-spec to-spec :as rel] id]
+(defmethod imp/get-rel ::shelf [{:keys [shelving.trivial-edn/state schema]} [from-spec to-spec :as rel] id]
   (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) (get from-spec) (get id) seq))
 
 (defn ->TrivialEdnShelf

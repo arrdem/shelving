@@ -67,7 +67,7 @@
 (defmethod close :default [t]
   (flush t))
 
-(defmulti get
+(defmulti get-spec
   "Fetches a single tuple, being part of a record, from a shelf by its spec and ID.
 
   Returns the record if it exists, otherwise returning the
@@ -101,7 +101,7 @@
 
 (defmethod has? :default [conn spec record-id]
   (let [not-found (Object.)]
-    (not= not-found (get conn spec record-id not-found))))
+    (not= not-found (get-spec conn spec record-id not-found))))
 
 (defmulti put-spec
   "The \"raw\" put operation on values. Inserts a fully decomposed
@@ -248,7 +248,7 @@
 
 (required! count-rel)
 
-(defmulti relate-by-id
+(defmulti get-rel
   "Given a rel(ation) and the ID of an record of the from-rel spec,
   return a seq of the IDs of records it relates to. If the given ID
   does not exist on the left side of the given relation, an empty seq
@@ -271,26 +271,10 @@
    :arglists   '([conn rel-id spec id])}
   #'dx)
 
-(defmethod relate-by-id :default [conn [from-spec to-spec :as rel-id] id]
+(defmethod get-rel :default [conn [from-spec to-spec :as rel-id] id]
   (let [real-rel-id (schema/resolve-alias (schema conn) rel-id)
         f           (if (= rel-id real-rel-id)
                       #(when (= id (first %)) (second %))
                       #(when (= id (second %)) (first %)))]
     (keep f (enumerate-rel conn real-rel-id))))
 
-(defmulti relate-by-value
-  "Given a rel(ation) and a value conforming to the left side of the relation,
-  return a seq of the IDs of records on the right side of the
-  relation (if any) it relates to.
-
-  By default uses [`#'enumerate-rel`](#enumerate-rel) to do a full rel scan.
-
-  Shelves may provide more efficient implementations of this method."
-  {:categories #{::rel}
-   :stability  :stability/unstable
-   :added      "0.0.0"
-   :arglists   '([conn rel-id spec id])}
-  #'dx)
-
-(defmethod relate-by-value :default [conn [from-spec to-spec :as rel-id] val]
-  (relate-by-id conn rel-id (schema/id-for-record (schema conn) val)))

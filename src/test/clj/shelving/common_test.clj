@@ -10,6 +10,8 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.string :as str]))
 
+(s/check-asserts true)
+
 (s/def ::foo string?)
 (s/def ::bar string?)
 (s/def ::baz
@@ -46,7 +48,7 @@
             (t/is (= v2 (sh/get conn ::foo r2)))
             (t/is (sh/has? conn ::foo r2))
             (t/is (= (list r1 r2) (sh/enumerate-spec conn ::foo)))
-            (t/is (thrown? UnsupportedOperationException
+            (t/is (thrown? AssertionError
                            (sh/put conn ::foo r1 (sgen/generate foo-gen))))
 
             (t/is (>= 2 (sh/count-spec conn ::foo)))))
@@ -79,8 +81,8 @@
           (t/is foo-id)
           (t/is baz-id)
           ;; Relations are bidirectional on read, unidirectional on write.
-          (t/is (some #{foo-id} (sh/relate-by-id conn [::baz ::foo] baz-id)))
-          (t/is (some #{baz-id} (sh/relate-by-id conn [::foo ::baz] foo-id))))))))
+          (t/is (some #{foo-id} (sh/get-rel conn [::baz ::foo] baz-id)))
+          (t/is (some #{baz-id} (sh/get-rel conn [::foo ::baz] foo-id))))))))
 
 (defn record-rel-tests [->cfg]
   (let [foo-gen (s/gen ::foo)
@@ -101,8 +103,8 @@
           (t/is baz-id)
 
           ;; Relations are bidirectional on read, unidirectional on write.
-          (t/is (some #(= % foo-id) (sh/relate-by-id conn [::baz ::foo] baz-id)))
-          (t/is (some #(= % baz-id) (sh/relate-by-id conn [::foo ::baz] foo-id)))
+          (t/is (some #(= % foo-id) (sh/get-rel conn [::baz ::foo] baz-id)))
+          (t/is (some #(= % baz-id) (sh/get-rel conn [::foo ::baz] foo-id)))
 
           ;; Now perform a write which should invalidate the above properties
           (sh/put conn ::baz baz-id baz')
@@ -110,12 +112,12 @@
           ;; The old values should no longer be associated as baz has changed.
           ;; But only if foo and foo' are distinct.
           (when (not= the-foo the-foo')
-            (t/is (not-any? #{foo-id} (sh/relate-by-id conn [::baz ::foo] baz-id)))
-            (t/is (not-any? #{baz-id} (sh/relate-by-id conn [::foo ::foo] foo-id))))
+            (t/is (not-any? #{foo-id} (sh/get-rel conn [::baz ::foo] baz-id)))
+            (t/is (not-any? #{baz-id} (sh/get-rel conn [::foo ::foo] foo-id))))
 
           ;; The new values should be in effect
-          (t/is (some #{foo-id'} (sh/relate-by-id conn [::baz ::foo] baz-id)))
-          (t/is (some #{baz-id}  (sh/relate-by-id conn [::foo ::baz] foo-id')))
+          (t/is (some #{foo-id'} (sh/get-rel conn [::baz ::foo] baz-id)))
+          (t/is (some #{baz-id}  (sh/get-rel conn [::foo ::baz] foo-id')))
 
           ;; The rel should be counted, and equal in cardinality going either way
           (t/is (= (sh/count-rel conn [::baz ::foo])

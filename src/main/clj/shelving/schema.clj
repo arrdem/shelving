@@ -45,42 +45,6 @@
 
 ;; Intentional interface for schemas
 ;;--------------------------------------------------------------------------------------------------
-
-;; Specs
-(s/def ::spec-id
-  qualified-keyword?)
-
-(s/def :shelving.core.spec/type
-  #{::spec})
-
-(s/def :shelving.core.spec/record?
-  boolean?)
-
-(s/def :shelving.core.spec/id-fn
-  ifn?)
-
-(s/def :shelving.core.spec/rels
-  (s/coll-of #(s/valid? ::rel-id %)))
-
-(s/def :shelving.core/spec
-  (s/keys :req-un [:shelving.core.spec/type
-                   :shelving.core.spec/record?
-                   :shelving.core.spec/id-fn
-                   :shelving.core.spec/rels]))
-
-(s/def :shelving.core.schema/type #{::schema})
-
-(s/def :shelving.core.schema/specs
-  (s/map-of #(s/valid? ::spec-id %) #(s/valid? ::spec %)))
-
-(s/def :shelving.core.schema/rels
-  (s/map-of #(s/valid? ::rel-id %) #(s/valid? ::rel+alias %)))
-
-(s/def ::schema
-  (s/keys :req-un [:shelving.core.schema/type
-                   :shelving.core.schema/specs
-                   :shelving.core.schema/rels]))
-
 (def ^{:doc "The empty Shelving schema.
 
   Should be used as the basis for all user-defined schemas."
@@ -91,13 +55,6 @@
   {:type  ::schema
    :specs {}
    :rels  {}})
-
-(s/fdef shelf-spec*
-        :args (s/cat :schema ::schema
-                     :spec ::spec
-                     :record? boolean?
-                     :id-fn :shelving.core.spec/id-fn)
-        :ret ::schema)
 
 (defn- merge-specs
   [l r]
@@ -128,11 +85,6 @@
                        :record? record?}
                       e)))))
 
-(s/fdef has-spec?
-        :args (s/cat :schema ::schema
-                     :spec   ::spec)
-        :ret boolean?)
-
 (defn has-spec?
   "Helper used for preconditions."
   {:categories #{::schema}
@@ -140,11 +92,6 @@
    :added      "0.0.0"}
   [schema spec]
   (boolean (some-> schema :specs spec)))
-
-(s/fdef is-value?
-        :args (s/cat :schema ::schema
-                     :spec   ::spec)
-        :ret boolean?)
 
 (defn is-value?
   "True if and only if the spec exists and is a `:value` spec."
@@ -155,11 +102,6 @@
   (boolean (some-> schema :specs spec :record? not)))
 
 (declare has-rel? spec-rel)
-
-(s/fdef value-spec
-        :args (s/cat :schema ::schema
-                     :spec   ::spec)
-        :ret ::schema)
 
 (defn value-spec
   "Enters a new spec and its subspecs into the schema, returning a new
@@ -194,11 +136,6 @@
           (filter qualified-keyword?
                   (ss/subspec-pred-seq spec))))
 
-(s/fdef is-record?
-        :args (s/cat :schema ::schema
-                     :spec   ::spec)
-        :ret boolean?)
-
 (defn is-record?
   "True if and only if the spec exists and is a record spec."
   {:categories #{::schema}
@@ -206,11 +143,6 @@
    :added      "0.0.0"}
   [schema spec]
   (boolean (some-> schema :specs spec :record?)))
-
-(s/fdef record-spec
-        :args (s/cat :schema ::schema
-                     :spec   ::spec)
-        :ret ::schema)
 
 (defn record-spec
   "Enters a new spec and its subspecs spec into a schema,
@@ -238,12 +170,6 @@
           (shelf-spec* schema spec true random-uuid)
           (rest (ss/spec-seq spec))))
 
-(s/fdef id-for-record
-        :args (s/cat :schema ::schema
-                     :spec   ::spec
-                     :val    some)
-        :ret uuid?)
-
 (defn id-for-record
   "Returns the `val`'s identifying UUID according to the spec's schema entry."
   {:categories #{::schema}
@@ -256,12 +182,6 @@
                    (clojure.core/get spec)
                    (clojure.core/get :id-fn random-uuid))]
     (key-fn val)))
-
-(s/fdef schema->specs
-        :args (s/cat :schema ::schema)
-        :ret (s/coll-of (s/tuple ::spec
-                                 (s/or :kw ::spec
-                                       :form list?))))
 
 (defn schema->specs
   "Helper used for converting a schema record to a fully resolved spec serialization for storage."
@@ -302,39 +222,6 @@
 ;; Relations
 ;;--------------------------------------------------------------------------------------------------
 ;; Relations (and aliases) have IDs
-(s/def ::rel-id
-  (s/tuple ::spec-id ::spec-id))
-
-(s/def :shelving.core.rel/type
-  #{::rel})
-
-(s/def :shelving.core.rel/to-fn
-  ifn?)
-
-(s/def ::rel
-  (s/keys :req-un [:shelving.core.rel/type
-                   :shelving.core.rel/to-fn]))
-
-;; Relations may have aliases
-(s/def :shelving.core.alias/type
-  #{::alias})
-
-(s/def :shelving.core.alias/to
-  ::rel-id)
-
-(s/def ::alias
-  (s/keys :req-un [:shelving.core.alias/type
-                   :shelving.core.alias/to]))
-
-;; Really when we way rel we mean either a rel or an alias
-(s/def ::rel+alias
-  (s/or :rel ::rel :alias ::alias))
-
-(s/fdef spec-rel
-        :args (s/cat :schema ::schema
-                     :rel-id ::rel-id)
-        :ret ::schema)
-
 (defn spec-rel*
   "Implementation detail of `#'spec-rel` which allows for the creation
   of arbitrary relations. Almost certainly isn't what you want."
@@ -379,12 +266,6 @@
          (contains? (set (ss/subspec-pred-seq from-spec)) to-spec)]}
   (spec-rel* schema rel-id))
 
-(s/fdef has-rel?
-        :args (s/cat :schema ::schema
-                     :rel-id ::rel-id
-                     :to-fn ifn?)
-        :ret boolean?)
-
 (defn has-rel?
   "True if and only if both specs in the named rel, and the named rel exist in the schema."
   {:categories #{::rel}
@@ -395,12 +276,6 @@
        (has-spec? schema to-spec)
        (-> schema :rels (contains? rel-id))))
 
-(s/fdef is-alias?
-        :args (s/cat :schema ::schema
-                     :rel-id ::rel-id
-                     :to-fn ifn?)
-        :ret boolean?)
-
 (defn is-alias?
   "True if and only if the schema has the relation (`#'has-rel?`) and the relation is an alias."
   {:categories #{::rel}
@@ -409,12 +284,6 @@
   [schema rel-id]
   (and (has-rel? schema rel-id)
        (= ::alias (-> schema :rels (clojure.core/get rel-id) :type))))
-
-(s/fdef resolve-alias
-        :args (s/cat :schema ::schema
-                     :rel-id ::rel-id
-                     :to-fn ifn?)
-        :ret boolean?)
 
 (defn resolve-alias
   "When the schema has a rel (`#'has-rel?`) and it is an
@@ -467,11 +336,12 @@
     (binding [s.w/*walk-through-aliases* false]
       (s.w/postwalk-with-spec
        (fn [subspec subval]
-         (when (and (qualified-keyword? subspec)
-                    (not= spec subspec))
+         (if (and (qualified-keyword? subspec)
+                  (not= spec subspec))
            (let [id* (id-for-record schema subspec subval)]
              (vswap! acc! conj [:record subspec id* subval])
-             (vswap! acc! conj [:rel [spec subspec] id id*])))
-         subval)
+             (vswap! acc! conj [:rel [spec subspec] id id*])
+             id*)
+           subval))
        spec val)
-      @acc!)))
+    @acc!)))

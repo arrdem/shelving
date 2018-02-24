@@ -28,7 +28,7 @@
                #_(println ~(str "DEBUG " (name lvar) " " (pr-str clause) "]\n        ") ~'state)
                (map (fn [~'e]
                       (assoc ~'state '~lvar ~'e))
-                    (sh/relate-by-id ~'conn ~rel ~id))))
+                    (sh/get-rel ~'conn ~rel ~id))))
 
     {:type ::p/scan-spec :spec spec}
     `(mapcat (fn [~'state]
@@ -42,7 +42,7 @@
                #_(println ~(str "DEBUG " (name lvar) " " (pr-str clause) "]\n        ") ~'state)
                (map (fn [~'e]
                       (assoc ~'state '~lvar ~'e))
-                    (sh/relate-by-id ~'conn ~rel (get ~'state '~left-var)))))
+                    (sh/get-rel ~'conn ~rel (get ~'state '~left-var)))))
 
     {:type ::p/intersect :left left-var :right right-var}
     `(keep (fn [~'state]

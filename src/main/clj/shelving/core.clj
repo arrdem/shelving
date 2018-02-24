@@ -15,23 +15,64 @@
   (:refer-clojure :exclude [flush get])
   (:require [clojure.spec.alpha :as s]
             [clojure.core.match :refer [match]]
+            [clojure.tools.logging :as log]
             [potemkin :refer [import-vars]]
             [shelving.impl :as impl]
             [shelving.schema :as schema]
             [shelving.impl :as imp]))
 
+;; Data specs
+;;--------------------------------------------------------------------------------------------------
+(s/def ::spec-id
+  qualified-keyword?)
+
+(s/def :shelving.core.spec/type
+  #{::spec})
+
+(s/def :shelving.core.spec/record?
+  boolean?)
+
+(s/def :shelving.core.spec/id-fn
+  ifn?)
+
+(s/def :shelving.core.spec/rels
+  (s/coll-of #(s/valid? ::rel-id %)))
+
+(s/def ::spec
+  (s/keys :req-un [:shelving.core.spec/type
+                   :shelving.core.spec/record?
+                   :shelving.core.spec/id-fn
+                   :shelving.core.spec/rels]))
+
+(s/def :shelving.core.schema/type #{::schema})
+
+(s/def :shelving.core.schema/specs
+  (s/map-of #(s/valid? ::spec-id %) #(s/valid? ::spec %)))
+
+(s/def :shelving.core.schema/rels
+  (s/map-of #(s/valid? ::rel-id %) #(s/valid? ::rel+alias %)))
+
+(s/def :shelving.core/schema
+  (s/keys :req-un [:shelving.core.schema/type
+                   :shelving.core.schema/specs
+                   :shelving.core.schema/rels]))
+
+(s/def ::rel-id
+  (s/tuple ::spec-id ::spec-id))
+
 ;; Intentional interface for shelves
 ;;--------------------------------------------------------------------------------------------------
 (import-vars
  [shelving.impl
-  open close flush ;; FIXME: add transactions / pipeline support
+  ;; FIXME: add transactions / pipeline support
+  open close flush
   ;; `put` and `get` have wrappers in this ns.
   has?
   schema
   enumerate-specs enumerate-rels
   count-spec count-rel
-  enumerate-spec enumerate-rel
-  relate-by-id relate-by-value]
+  enumerate-spec enumerate-rel 
+  get-rel]
  [shelving.schema
   empty-schema value-spec record-spec
   has-spec? is-value? is-record?
@@ -46,20 +87,21 @@
   constituent parts via a depth-first traversal, writing those parts
   and the appropriate relations to the shelving store if they don't
   exist already."
-  [conn spec val id]
-  ;; TODO: The implementation of this function ABSOLUTELY MUST cut the recursion when a value
-  ;; already exists in the datastore.
+  [conn spec id val]
   (let [schema (imp/schema conn)]
-    (loop [[t & queue* :as queue] (schema/decompose schema spec id val)]
+    (loop [[t & queue* :as queue] [[:record spec id val]]]
       (if (empty? queue) id
-          (match t
-            [:record spec* id* val*]
-            (when-not (has? conn spec* id*)
-              (imp/put-spec conn spec id* val*)
-              (recur (into queue* (schema/decompose schema spec* id* val*))))
-            
-            [:rel rel-id from-id to-id]
-            (imp/put-rel conn rel-id from-id to-id))))))
+         (match t
+           [:record spec* id* val*]
+           (if-not (has? conn spec* id*)
+             (do (imp/put-spec conn spec* id* val*)
+                 (recur (into queue* (schema/decompose schema spec* id* val*))))
+             (recur queue*))
+
+           [:rel rel-id from-id to-id]
+           (do (imp/put-rel conn rel-id from-id to-id)
+               (recur queue*)))))
+    id))
 
 (defn put
   "Destructuring put.
@@ -78,14 +120,17 @@
    :stability  :stability/stable
    :added      "0.0.0"}
   ([conn spec val]
-   {:pre [(s/valid? spec val)]}
+   (s/assert spec val)
    (let [id (id-for-record (imp/schema conn) spec val)]
-     (put* conn spec val id)))
-  ([conn spec val id]
-   {:pre [(s/valid? spec val)
-          (schema/is-record? (imp/schema conn) spec)]}
-   (put* conn spec val id)))
+     (put* conn spec id val)))
+  ([conn spec id val]
+   (s/assert spec val)
+   (assert (is-record? (schema conn) spec))
+   (put* conn spec id val)))
 
+
+;; FIXME: this needs to do value recomposition if that's behavior supported by the back-end
+;; currently in use. How to express that? Above we don't do decomposition reversably...
 (defn get
   "Restructuring get.
 
@@ -97,5 +142,10 @@
   {:categories #{::basic}
    :stability  :stability/stable
    :added      "0.0.0"}
-  ([conn spec record-id])
-  ([conn spec record-id not-found]))
+  ([conn spec record-id]
+   {:post [(s/valid? spec %)]}
+   (imp/get-spec conn spec record-id nil))
+  ([conn spec record-id not-found]
+   {:post [(s/valid? spec %)]}
+   (imp/get-spec conn spec record-id not-found)))
+

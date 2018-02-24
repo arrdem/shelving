@@ -11,8 +11,11 @@
                  [org.clojure/core.match "0.3.0-alpha5"]
                  [org.clojure/core.cache "0.6.5"]
                  [org.clojure/tools.logging "0.4.0"]
-                 [potemkin "0.4.4"]]
-
+                 [potemkin "0.4.4"]
+                 [org.clojure/tools.logging "0.4.0"]
+                 [org.apache.logging.log4j/log4j-api "2.10.0"]
+                 [org.apache.logging.log4j/log4j-core "2.10.0"]]
+  
   :source-paths      ["src/main/clj"
                       "src/main/cljc"]
   :java-source-paths ["src/main/jvm"]
@@ -27,7 +30,7 @@
                    :resource-paths    ["src/dev/resources"]
                    :doc-paths         ["README.md" "docs"]}}
 
-  :plugins [[me.arrdem/lein-git-version "2.0.4"]
+  :plugins [[me.arrdem/lein-git-version "[2.0.0,3.0.0)"]
             [me.arrdem/lein-auto "0.1.4"]
             [lein-cljfmt "0.5.7"]]
 
