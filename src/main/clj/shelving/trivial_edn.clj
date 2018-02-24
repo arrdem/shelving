@@ -75,8 +75,8 @@
    (-> @state (get :records) (get spec) (get record-id not-found))))
 
 (defmethod imp/put-rel ::shelf
-  [{:keys [shelving.trivial-edn/state flush-after-write] :as conn} [from-spec to-spec :as rel-id] from-id to-id]
-  (swap! state #(update-in % [:rels rel-id]
+  [{:keys [shelving.trivial-edn/state schema flush-after-write] :as conn} [from-spec to-spec :as rel-id] from-id to-id]
+  (swap! state #(update-in % [:rels (sh/resolve-alias schema rel-id)]
                   (fn [state]
                     (-> state
                         (update-in [from-spec from-id] (fnil conj #{}) to-id)
@@ -99,8 +99,9 @@
 (defmethod imp/count-spec ::shelf [{:keys [shelving.trivial-edn/state]} spec]
   (or (some-> @state (get :records) (get spec) keys count) 0))
 
-(defmethod imp/enumerate-rel ::shelf [{:keys [shelving.trivial-edn/state]} rel]
-  (some-> @state (get :rels) (get rel) (get :pairs) seq))
+;; FIXME: this will return pairs in the wrong order when given an alias!
+(defmethod imp/enumerate-rel ::shelf [{:keys [shelving.trivial-edn/state schema]} rel]
+  (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) (get :pairs) seq))
 
 (defmethod imp/count-rel ::shelf [{:keys [shelving.trivial-edn/state schema]} rel]
   (or (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) :pairs count) 0))
