@@ -76,13 +76,12 @@
 
 (defmethod imp/put-rel ::shelf
   [{:keys [shelving.trivial-edn/state flush-after-write] :as conn} [from-spec to-spec :as rel-id] from-id to-id]
-  (swap! state (fn [state]
-                 (update-in state [:rels rel-id]
-                            (fn [state]
-                              (-> state
-                                  (update-in [from-spec from-id] (fnil conj #{}) to-id)
-                                  (update-in [to-spec to-id] (fnil conj #{}) from-id)
-                                  (update-in [:pairs] (fnil conj #{}) [from-id to-id]))))))
+  (swap! state #(update-in % [:rels rel-id]
+                  (fn [state]
+                    (-> state
+                        (update-in [from-spec from-id] (fnil conj #{}) to-id)
+                        (update-in [to-spec to-id] (fnil conj #{}) from-id)
+                        (update-in [:pairs] (fnil conj #{}) [from-id to-id])))))
   (when flush-after-write
     (sh/flush conn))
   [from-id rel-id to-id])

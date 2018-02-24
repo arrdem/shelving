@@ -89,18 +89,21 @@
   exist already."
   [conn spec id val]
   (let [schema (imp/schema conn)]
-    (loop [[t & queue* :as queue] [[:record spec id val]]]
+    (loop [[t & queue* :as queue] [[:record spec id val]]
+           dirty? #{}]
       (if (empty? queue) id
          (match t
            [:record spec* id* val*]
-           (if-not (has? conn spec* id*)
+           (if-not (and (has? conn spec* id*)
+                        (is-value? schema spec*))
              (do (imp/put-spec conn spec* id* val*)
-                 (recur (into queue* (schema/decompose schema spec* id* val*))))
-             (recur queue*))
+                 (recur (into queue* (schema/decompose schema spec* id* val*)) (conj dirty? id*)))
+             (recur queue* dirty?))
 
            [:rel rel-id from-id to-id]
-           (do (imp/put-rel conn rel-id from-id to-id)
-               (recur queue*)))))
+           (do (when (or (dirty? from-id) (dirty? to-id))
+                 (imp/put-rel conn rel-id from-id to-id))
+               (recur queue* dirty?)))))
     id))
 
 (defn put
