@@ -1,14 +1,11 @@
 (ns shelving.common-test
-  (:require [shelving.core :as sh]
-            [shelving.trivial-edn :refer [->TrivialEdnShelf]]
+  (:require [clojure.spec.alpha :as s]
+            [clojure.spec.gen.alpha :as sgen]
+            [clojure.string :as str]
             [clojure.test :as t]
             [clojure.test.check :as tc]
-            [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as sgen]
-            [clojure.test.check.clojure-test :refer [defspec]]
-            [clojure.string :as str]))
+            [shelving.core :as sh]))
 
 (s/check-asserts true)
 
@@ -17,12 +14,16 @@
 (s/def ::baz
   (s/keys :req-un [::foo ::bar]))
 
+(def schema
+  (-> sh/empty-schema
+      (sh/value-spec ::foo)
+      (sh/record-spec ::baz)
+      (sh/spec-rel [::baz ::foo])
+      (sh/spec-rel [::baz ::bar])))
+
 (defn put-get-enumerate-example-tests [->cfg]
   (let [foo-gen (s/gen ::foo)
-        baz-gen (s/gen ::baz)
-        schema  (-> sh/empty-schema
-                    (sh/value-spec ::foo)
-                    (sh/record-spec ::baz))]
+        baz-gen (s/gen ::baz)]
 
     (t/testing "Checking schema for errors"
       (let [schema-errors (sh/check-schema schema)]
@@ -47,7 +48,7 @@
             (t/is (sh/has? conn ::foo r1))
             (t/is (= v2 (sh/get conn ::foo r2)))
             (t/is (sh/has? conn ::foo r2))
-            (t/is (= (list r1 r2) (sh/enumerate-spec conn ::foo)))
+            (t/is (= #{r1 r2} (set (sh/enumerate-spec conn ::foo))))
             (t/is (thrown? AssertionError
                            (sh/put conn ::foo r1 (sgen/generate foo-gen))))
 
@@ -59,19 +60,16 @@
                 bi1 (sh/put conn ::baz b1)]
             (t/is (= b1 (sh/get conn ::baz bi1)))
             (t/is (sh/has? conn ::baz bi1))
-            (t/is (= (list bi1) (sh/enumerate-spec conn ::baz)))
+            (t/is (= #{bi1} (set (sh/enumerate-spec conn ::baz))))
 
             ;; Upserts should work
             (sh/put conn ::baz bi1 b2)
             (t/is (= b2 (sh/get conn ::baz bi1)))
-            (t/is (= (list bi1) (sh/enumerate-spec conn ::baz)))))))))
+            (t/is (= #{bi1} (set (sh/enumerate-spec conn ::baz))))))))))
 
 (defn value-rel-tests [->cfg]
   (let [foo-gen (s/gen ::foo)
         baz-gen (s/gen ::baz)
-        schema  (-> sh/empty-schema
-                    (sh/value-spec ::foo)
-                    (sh/value-spec ::baz))
         conn    (sh/open (->cfg schema))]
     (tc/quick-check 100
       (prop/for-all [baz baz-gen]
@@ -87,18 +85,15 @@
 (defn record-rel-tests [->cfg]
   (let [foo-gen (s/gen ::foo)
         baz-gen (s/gen ::baz)
-        schema  (-> sh/empty-schema
-                    (sh/value-spec ::foo)
-                    (sh/record-spec ::baz))
         conn    (sh/open (->cfg schema))]
     (tc/quick-check 100
       (prop/for-all [baz  baz-gen
                      baz' baz-gen]
         (let [the-foo  (:foo baz)
               the-foo' (:foo baz')
-              foo-id   (sh/put conn ::foo the-foo)
-              foo-id'  (sh/put conn ::foo the-foo')
-              baz-id   (sh/put conn ::baz baz)]
+              foo-id   (sh/put conn ::foo the-foo) 
+              baz-id   (sh/put conn ::baz baz)
+              foo-id'  (sh/put conn ::foo the-foo')]
           (t/is foo-id)
           (t/is baz-id)
 
@@ -113,7 +108,7 @@
           ;; But only if foo and foo' are distinct.
           (when (not= the-foo the-foo')
             (t/is (not-any? #{foo-id} (sh/get-rel conn [::baz ::foo] baz-id)))
-            (t/is (not-any? #{baz-id} (sh/get-rel conn [::foo ::foo] foo-id))))
+            (t/is (not-any? #{baz-id} (sh/get-rel conn [::foo ::baz] foo-id))))
 
           ;; The new values should be in effect
           (t/is (some #{foo-id'} (sh/get-rel conn [::baz ::foo] baz-id)))

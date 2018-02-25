@@ -1,14 +1,16 @@
-(ns shelving.trivial-edn
-  "A naive EDN backed shelving unit."
-  {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"]
-   :license "Eclipse Public License 1.0"
+(ns shelving.map-shelf
+  "An entirely in-memory shelf based on mappings.
+
+  Really only useful for development.
+  Grossly inappropriate for most applications."
+  {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
+   :license "Eclipse Public License 1.0",
    :added   "0.1.0"}
-  (:require [shelving.core :as sh]
-            [shelving.impl :as imp]
-            [clojure.edn :as edn]
+  (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
-            [clojure.set :refer [superset?]]))
+            [shelving.core :as sh]
+            [shelving.impl :as imp]))
 
 ;; Configs open into shelves
 (defmethod imp/open ::config [{:keys [path schema load] :as s}]
@@ -30,7 +32,7 @@
         persisted-specs (-> state deref :schema)
         our-specs       (sh/schema->specs schema)]
     ;; Check the persisted schema
-    (sh/check-specs! persisted-specs our-specs)
+    (sh/check-schemas! persisted-specs our-specs)
     
     ;; Install the schema updates in a new db 
     (swap! state update :schema merge our-specs)
@@ -77,18 +79,36 @@
 (defmethod imp/put-rel ::shelf
   [{:keys [shelving.trivial-edn/state schema flush-after-write] :as conn} [from-spec to-spec :as rel-id] from-id to-id]
   (swap! state #(update-in % [:rels (sh/resolve-alias schema rel-id)]
-                  (fn [state]
-                    (-> state
-                        (update-in [from-spec from-id] (fnil conj #{}) to-id)
-                        (update-in [to-spec to-id] (fnil conj #{}) from-id)
-                        (update-in [:pairs] (fnil conj #{}) [from-id to-id])))))
+                           (fn [state]
+                             (-> state
+                                 (update-in [from-spec from-id] (fnil conj #{}) to-id)
+                                 (update-in [to-spec to-id] (fnil conj #{}) from-id)
+                                 (update-in [:pairs] (fnil conj #{}) [from-id to-id])))))
   (when flush-after-write
     (sh/flush conn))
   [from-id rel-id to-id])
 
+(defn- invalidate [rels spec id]
+  (merge (->> (for [[from-spec to-spec :as k] (keys rels)
+                    :when                     (= from-spec spec)
+                    :let                      [v (get rels k)
+                                               from-mappings (get v from-spec)
+                                               to-mappings (get v to-spec)
+                                               pairs (get v :pairs)]]
+                [k {from-spec (dissoc from-mappings id)
+                    to-spec   (into to-mappings
+                                    (for [stale-to (get from-mappings id)]
+                                      [stale-to (disj (get to-mappings stale-to) id)]))
+                    :pairs    (into #{} (remove (comp #{id} first) pairs))}])
+              (into {}))
+         rels))
+
 (defmethod imp/put-spec ::shelf
-  [{:keys [shelving.trivial-edn/state flush-after-write] :as conn} spec id val]
-  (swap! state assoc-in [:records spec id] val)
+  [{:keys [shelving.trivial-edn/state schema flush-after-write] :as conn} spec id val]
+  (swap! state (fn [state]
+                 (cond-> state
+                   true                        (assoc-in [:records spec id] val)
+                   (sh/is-record? schema spec) (update :rels invalidate spec id))))
   (when flush-after-write
     (sh/flush conn))
   id)
@@ -109,8 +129,8 @@
 (defmethod imp/get-rel ::shelf [{:keys [shelving.trivial-edn/state schema]} [from-spec to-spec :as rel] id]
   (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) (get from-spec) (get id) seq))
 
-(defn ->TrivialEdnShelf
-  "Configures a (trivial) EDN shelf which can be opened for reading and writing."
+(defn ->MapShelf
+  "Configures a mappings based shelf which can be opened for reading and writing."
   {:categories #{::sh/basic}
    :added      "0.0.0"
    :stability  :stability/stable}

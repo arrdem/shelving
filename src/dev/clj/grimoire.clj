@@ -1,8 +1,7 @@
 (ns grimoire
   "A demo of the shelving API, and applying it to a Grimoire v2-like store."
-  (:require [shelving.core :as shelving]
-            [shelving.trivial-edn :as ts]
-            [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [shelving.core :as shelving]))
 
 ;; Packages, containers of entities we wish to document.
 ;;------------------------------------------------------------------------------------------
@@ -163,4 +162,6 @@
   (-> shelving/empty-schema
       (shelving/value-spec ::package)
       (shelving/value-spec ::entity)
-      (shelving/record-spec ::annotation)))
+      (shelving/record-spec ::annotation)
+      (shelving/automatic-rels true)
+      (shelving/automatic-specs true)))

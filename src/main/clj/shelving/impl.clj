@@ -111,6 +111,9 @@
   Users should universally prefer `#'shelving.core/put`. This method
   is an unprotected implementation detail not for general use.
 
+  Note that when inserting into \"record\" specs, all relations to the
+  updated \"record\" ID must be invalidated.
+
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
@@ -157,6 +160,26 @@
   #'dx)
 
 (required! schema)
+
+(defmulti set-schema
+  "Attempts to alter the live schema of the connection by applying the
+  given transformer function to the current schema state with any
+  additional arguments.
+
+  Implementation detail of `#'shelving.core/alter-schema`, which
+  should be universally preferred.
+
+  Returns the schema record for a given connection.
+
+  Shelves must implement this method.
+
+  By default throws `me.arrdem.UnimplementedOperationException`."
+  {:categories #{::basic}
+   :stability  :stability/stable
+   :added      "0.0.0"
+   :arglists   '([conn schema])})
+
+(required! set-schema)
 
 (defmulti enumerate-specs
   "Enumerates all the known specs.

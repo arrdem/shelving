@@ -47,14 +47,18 @@
 ;;--------------------------------------------------------------------------------------------------
 (def ^{:doc "The empty Shelving schema.
 
-  Should be used as the basis for all user-defined schemas."
+  Should be used as the basis for all user-defined schemas.
+
+  Contains no specs, no rel(ation)s, and allows the automatic creation of neither specs nor rels."
        :categories #{::schema}
        :stability  :stability/stable
        :added      "0.0.0"}
   empty-schema
-  {:type  ::schema
-   :specs {}
-   :rels  {}})
+  {:type             ::schema
+   :automatic-specs? false
+   :automatic-rels?  false
+   :specs            {}
+   :rels             {}})
 
 (defn- merge-specs
   [l r]
@@ -170,6 +174,28 @@
           (shelf-spec* schema spec true random-uuid)
           (rest (ss/spec-seq spec))))
 
+(defn automatic-specs
+  "Function of a schema, returning a new schema which allows for the
+  automatic addition of specs. Specs added automatically will always
+  be \"values\"."
+  {:categories #{::schema}
+   :stability  :stability/stable
+   :added      "0.0.0"}
+  ([schema]
+   (automatic-specs schema true))
+  ([schema bool]
+   {:pre [(boolean? bool)]}
+   (assoc schema :automatic-specs? bool)))
+
+(defn automatic-specs?
+  "Function of a schema, indicating whether it allows for the automatic
+  creation of \"value\" specs."
+  {:categories #{::schema}
+   :stability  :stability/stable
+   :added      "0.0.0"}
+  [{:keys [automatic-specs?]}]
+  (or automatic-specs? false))
+
 (defn id-for-record
   "Returns the `val`'s identifying UUID according to the spec's schema entry."
   {:categories #{::schema}
@@ -196,28 +222,41 @@
             (apply ss/spec-seq (-> schema :specs keys)))
        (into {})))
 
-(defn check-specs!
+(defn check-schemas
   "Helper for use in checking compatibility between database persistable specs.
-  Because proving equivalence on specs is basically impossible, we'll start with equality."
+  Because proving equivalence on specs is basically impossible, we'll
+  start with equality.
+  
+  Returns a sequence of problems encountered while checking
+  compatibility."
   {:categories #{::schema}
    :stability  :stability/stable
    :added      "0.0.0"}
-  [persisted live]
-  (doseq [s     (keys live)
-          :let  [ls (clojure.core/get live s)
-                 ps (clojure.core/get persisted s)]
-          :when persisted]
-    (when-not (= (:record? ls) (:record? ps))
-      (throw (ex-info "Incompatible schemas - `:record?` differs!"
-                      {:live      ls
-                       :persisted ps})))
+  [s s*]
+  (->> (keys s*)
+       (mapcat (fn [s]
+                 (let [live     (clojure.core/get s s)
+                       proposed (clojure.core/get s* s)]
+                   (when live
+                     [(when (not= (:record? live) (:record? proposed))
+                        (format "`:record?` differs on spec %s! live: %s proposed: %s"
+                                s (:record? live) (:record? proposed)))
 
-    ;; FIXME (arrdem 2018-02-19):
-    ;;   This could make some attempt to be more general.
-    (when-not (= (:def ls) (:def ps))
-      (throw (ex-info "Incompatible schemas - `:def` differs!"
-                      {:live      ls
-                       :persisted ps})))))
+                      ;; FIXME (arrdem 2018-02-19):
+                      ;;   This could make some attempt to be more general.
+                      (when-not (= (:def live) (:def proposed))
+                        (format "`:def` differs on spec %s! live %s proposed: %s"
+                                s (:def live) (:def proposed)))]))))
+       (remove nil?)
+       seq))
+
+(defn check-schemas!
+  "Same as `#'check-schemas`, but throws on the first problem."
+  {:categories #{::schema}
+   :stability  :stability/stable
+   :added      "0.0.0"}
+  [s s*]
+  (some-> (check-schemas s s*) first (ex-info {}) throw))
 
 ;; Relations
 ;;--------------------------------------------------------------------------------------------------
@@ -263,7 +302,8 @@
   [schema [from-spec to-spec :as rel-id]]
   {:pre [(s/get-spec from-spec)
          (s/get-spec to-spec)
-         (contains? (set (ss/subspec-pred-seq from-spec)) to-spec)]}
+         (contains? (set (ss/subspec-pred-seq from-spec)) to-spec)
+         (not (is-record? schema to-spec))]}
   (spec-rel* schema rel-id))
 
 (defn has-rel?
@@ -296,6 +336,27 @@
   (if (is-alias? schema rel-id)
     (recur schema (-> schema :rels (clojure.core/get rel-id) :to))
     rel-id))
+
+(defn automatic-rels
+  "Function of a schema, returning a new schema which allows for the
+  automatic addition of relations. Relations must be between known
+  specs, and may not relate to records."
+  {:categories #{::schema}
+   :stability  :stability/stable
+   :added      "0.0.0"}
+  ([schema]
+   (automatic-rels schema true))
+  ([schema bool]
+   {:pre [(boolean? bool)]}
+   (assoc schema :automatic-rels? bool)))
+
+(defn automatic-rels?
+  "Predicate indicating whether the schema supports automatic relations."
+  {:categories #{::schema}
+   :stability  :stability/stable
+   :added      "0.0.0"}
+  [{:keys [automatic-rels?]}]
+  (or automatic-rels? false))
 
 (defn check-schema
   "Helper used for validating that a schema, being a collection of specs
@@ -331,6 +392,9 @@
   "Given a schema, a spec in the schema, a record ID and the record as a
   value, decompose the record into its direct descendants and relations
   thereto."
+  {:categories #{::schema}
+   :stability  :stability/stable
+   :added      "0.0.0"}
   [schema spec id val]
   (let [acc! (volatile! [])]
     (binding [s.w/*walk-through-aliases* false]
@@ -344,4 +408,4 @@
              id*)
            subval))
        spec val)
-    @acc!)))
+      @acc!)))

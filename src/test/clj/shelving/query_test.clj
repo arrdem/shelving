@@ -3,33 +3,32 @@
             [clojure.test :as t]
             [shelving.core :as sh]
             [shelving.query :refer [q q!]]
-            [shelving.trivial-edn :refer [->TrivialEdnShelf]]))
+            [shelving.log-shelf :refer [->LogShelf]]))
 
 (s/def ::foo string?)
 (s/def ::qux pos-int?)
-(s/def :query.bar/type #{::bar})
 (s/def ::bar
-  (s/keys :req-un [::foo
-                   ::qux
-                   :query.bar/type]))
+  (s/keys :req-un [::foo ::qux]))
 
 (def schema
   (-> sh/empty-schema
       (sh/value-spec ::foo)
       (sh/value-spec ::qux)
-      (sh/value-spec ::bar)))
+      (sh/record-spec ::bar)
+      (sh/spec-rel [::bar ::foo])
+      (sh/spec-rel [::bar ::qux])))
 
 (t/deftest examples-test 
-  (let [*conn (-> (->TrivialEdnShelf schema "target/query-test.edn"
-                                     :flush-after-write false
-                                     :load false)
+  (let [*conn (-> (->LogShelf schema "target/query-test.edn"
+                              :flush-after-write false
+                              :load false)
                   (sh/open))]
 
-    (sh/put *conn ::bar {:type ::bar :foo "a" :qux 1})
-    (sh/put *conn ::bar {:type ::bar :foo "a" :qux 2})
-    (sh/put *conn ::bar {:type ::bar :foo "a" :qux 3})
-    (sh/put *conn ::bar {:type ::bar :foo "b" :qux 1})
-    (sh/put *conn ::bar {:type ::bar :foo "c" :qux 1})
+    (sh/put *conn ::bar {:foo "a" :qux 1})
+    (sh/put *conn ::bar {:foo "a" :qux 2})
+    (sh/put *conn ::bar {:foo "a" :qux 3})
+    (sh/put *conn ::bar {:foo "b" :qux 1})
+    (sh/put *conn ::bar {:foo "c" :qux 1})
 
     (t/testing "Testing unconstrained selects"
       (t/is (= #{"a" "b" "c"}

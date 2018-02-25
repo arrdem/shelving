@@ -1,5 +1,7 @@
 package me.arrdem;
 
+import me.arrdem.Exception;
+
 /**
  * An exception for when operations have not been implemented.
  *

@@ -19,7 +19,8 @@
             [potemkin :refer [import-vars]]
             [shelving.impl :as impl]
             [shelving.schema :as schema]
-            [shelving.impl :as imp]))
+            [shelving.impl :as imp])
+  (:import me.arrdem.shelving.SchemaMigrationException))
 
 ;; Data specs
 ;;--------------------------------------------------------------------------------------------------
@@ -76,11 +77,15 @@
  [shelving.schema
   empty-schema value-spec record-spec
   has-spec? is-value? is-record?
+  automatic-specs automatic-specs?
+  automatic-rels automatic-rels?
   id-for-record
   schema->specs
-  check-specs!
-  spec-rel has-rel? is-alias? resolve-alias
-  check-schema])
+  check-schema
+  check-schemas check-schemas!
+  spec-rel has-rel? is-alias? resolve-alias])
+
+(declare alter-schema)
 
 (defn- put*
   "Recursively traverse the given value, decomposing it into its
@@ -89,21 +94,25 @@
   exist already."
   [conn spec id val]
   (let [schema (imp/schema conn)]
-    (loop [[t & queue* :as queue] [[:record spec id val]]
-           dirty? #{}]
+    (loop [[t & queue* :as queue] [[:record spec id val]], dirty? #{}]
       (if (empty? queue) id
-         (match t
-           [:record spec* id* val*]
-           (if-not (and (has? conn spec* id*)
-                        (is-value? schema spec*))
-             (do (imp/put-spec conn spec* id* val*)
-                 (recur (into queue* (schema/decompose schema spec* id* val*)) (conj dirty? id*)))
-             (recur queue* dirty?))
+          (match t
+            [:record spec* id* val*]
+            (if-not (has-spec? schema spec)
+              (do (log/warnf "Attempted to insert into unknown spec %s!" spec*)
+                  (recur queue* dirty?))
+              (if-not (and (has? conn spec* id*)
+                           (is-value? schema spec*))
+                (do (imp/put-spec conn spec* id* val*)
+                    (recur (into queue* (schema/decompose schema spec* id* val*)) (conj dirty? id*)))
+                (recur queue* dirty?)))
 
-           [:rel rel-id from-id to-id]
-           (do (when (or (dirty? from-id) (dirty? to-id))
-                 (imp/put-rel conn rel-id from-id to-id))
-               (recur queue* dirty?)))))
+            [:rel rel-id from-id to-id]
+            (do (if-not (has-rel? schema rel-id)
+                  (log/warnf "Attempted to insert into unknown rel %s!" rel-id)
+                  (when (or (dirty? from-id) (dirty? to-id))
+                    (imp/put-rel conn rel-id from-id to-id)))
+                (recur queue* dirty?)))))
     id))
 
 (defn put
@@ -152,3 +161,42 @@
    {:post [(s/valid? spec %)]}
    (imp/get-spec conn spec record-id not-found)))
 
+(defn alter-schema
+  "Attempts alter the schema of a live connection.
+
+  I CANNOT EMPHASIZE ENOUGH HOW DANGEROUS THIS COULD BE.
+
+  1. Gets the live schema from the connection
+  2. Attempts to apply the schema altering function
+  3. Attempts to validate that the produced new schema is compatible
+  4. Irreversibly writes the new schema to the store
+
+  Applies the given transformer function to the current live schema
+  and the given arguments. Checks that the resulting schema is
+  compatible with the existing schema (eg. strictly additive), sending
+  the schema change to the connection only if compatibility checking
+  succeeds.
+
+  Returns the new schema.
+
+  Throws `me.arrdem.shelving.SchemaMigrationexception` without
+  impacting the connection or its backing store if schema
+  incompatibilities are detected."
+  {:categories #{::basic}
+   :stability  :stability/stable
+   :added      "0.0.0"}
+  [conn f & args]
+  (let [schema                  (schema conn)
+        [schema* ^Throwable e?] (try [(apply f schema args) nil]
+                                     (catch Throwable e [nil e]))]
+    (if e?
+      (throw (SchemaMigrationException.
+              "Failed to migrate schema while applying transformation function!"
+              e?))
+      (if-let [problems (schema/check-schemas schema schema*)]
+        (throw (SchemaMigrationException.
+                "Failed to validate the migrated schema!" problems))
+        ;; FIXME: this is SUPER FUCKING DANGEROUS. Who knows what the storage layer is gonna do. If
+        ;; this throws, we're kinda shit out of luck here.
+        (do (imp/set-schema conn schema)
+            schema)))))

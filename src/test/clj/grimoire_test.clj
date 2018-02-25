@@ -1,12 +1,12 @@
 (ns grimoire-test
   (:require [clojure.test :as t]
             [shelving.core :as shelving]
-            [shelving.trivial-edn :as ts]
+            [shelving.log-shelf :refer [->LogShelf]]
             [grimoire :refer :all :as g]))
 
 (def *conn
-  (-> (ts/->TrivialEdnShelf schema "target/grim.edn"
-                            :load false)
+  (-> (->LogShelf schema "target/grim.edn"
+                  :load false)
       (shelving/open)))
 
 (def clj-160
