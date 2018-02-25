@@ -24,11 +24,11 @@
                               :load false)
                   (sh/open))]
 
-    (sh/put *conn ::bar {:foo "a" :qux 1})
-    (sh/put *conn ::bar {:foo "a" :qux 2})
-    (sh/put *conn ::bar {:foo "a" :qux 3})
-    (sh/put *conn ::bar {:foo "b" :qux 1})
-    (sh/put *conn ::bar {:foo "c" :qux 1})
+    (sh/put-spec *conn ::bar {:foo "a" :qux 1})
+    (sh/put-spec *conn ::bar {:foo "a" :qux 2})
+    (sh/put-spec *conn ::bar {:foo "a" :qux 3})
+    (sh/put-spec *conn ::bar {:foo "b" :qux 1})
+    (sh/put-spec *conn ::bar {:foo "c" :qux 1})
 
     (t/testing "Testing unconstrained selects"
       (t/is (= #{"a" "b" "c"}

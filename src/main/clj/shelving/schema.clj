@@ -209,19 +209,6 @@
                  random-uuid uuid)]
     (key-fn val)))
 
-(defn schema->specs
-  "Helper used for converting a schema record to a fully resolved spec serialization for storage."
-  {:categories #{::schema}
-   :stability  :stability/stable
-   :added      "0.0.0"}
-  [schema]
-  (->> (map (juxt identity
-                  #(assoc (select-keys (get-in schema [:specs %])
-                                       [:record?])
-                          :def (s/describe* (s/get-spec %))))
-            (apply ss/spec-seq (-> schema :specs keys)))
-       (into {})))
-
 (defn check-schemas
   "Helper for use in checking compatibility between database persistable specs.
   Because proving equivalence on specs is basically impossible, we'll
@@ -275,6 +262,8 @@
                           (update-in [from-spec :rels] (fnil conj #{}) rel-id)
                           (update-in [to-spec :rels] (fnil conj #{}) rel-id)))))
 
+(declare has-rel?)
+
 (defn spec-rel
   "Enters a rel(ation) into a schema, returning a new schema which will
   maintain that rel.
@@ -305,9 +294,11 @@
          (has-spec? schema from-spec)
          (has-spec? schema to-spec)
          (not (is-record? schema to-spec))]}
-  (if-not (or (contains? (set (ss/subspec-pred-seq from-spec)) to-spec)
-              (= `s/multi-spec (first (s/describe* (s/get-spec from-spec)))))
+  (when-not (or (contains? (set (ss/subspec-pred-seq from-spec)) to-spec)
+                (= `s/multi-spec (first (s/describe* (s/get-spec from-spec)))))
     (log/warnf "Creating rel %s which could not be shown directly using specs!" rel-id))
+  (when (has-rel? schema rel-id)
+    (log/warnf "Re-creating rel %s!" rel-id))
   (spec-rel* schema rel-id))
 
 (defn has-rel?

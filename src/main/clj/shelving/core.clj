@@ -13,17 +13,16 @@
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:refer-clojure :exclude [flush get])
-  (:require [clojure.spec.alpha :as s]
-            [clojure.core.match :refer [match]]
+  (:require [clojure.core.match :refer [match]]
+            [clojure.spec.alpha :as s]
             [clojure.tools.logging :as log]
             [potemkin :refer [import-vars]]
-            [shelving.impl :as impl]
-            [shelving.schema :as schema]
-            [shelving.impl :as imp])
+            [shelving.impl :as imp]
+            [shelving.schema :as schema])
   (:import [me.arrdem.shelving
-            SchemaMigrationException
             MissingRelException
-            MissingSpecException]))
+            MissingSpecException
+            SchemaMigrationException]))
 
 ;; Data specs
 ;;--------------------------------------------------------------------------------------------------
@@ -83,7 +82,6 @@
   automatic-specs automatic-specs?
   automatic-rels automatic-rels?
   id-for-record
-  schema->specs
   check-schema
   check-schemas check-schemas!
   spec-rel has-rel? is-alias? resolve-alias])
@@ -143,7 +141,7 @@
                   (recur queue* dirty?))))))
   id)
 
-(defn put
+(defn put-spec
   "Destructuring put.
 
   Enters a record into a shelf according to its spec in the schema,
@@ -171,7 +169,7 @@
 
 ;; FIXME: this needs to do value recomposition if that's behavior supported by the back-end
 ;; currently in use. How to express that? Above we don't do decomposition reversably...
-(defn get
+(defn get-spec
   "Restructuring get.
 
   Recovers a record from a shelf according to spec and ID, returning

@@ -88,5 +88,5 @@
                    (->> (for [[lvar# spec#] '~(mapv (fn [lvar]
                                                       [lvar (get-in depmap [lvar :spec])])
                                                     find)]
-                          [lvar# (sh/get ~'conn spec# (get state# lvar#))])
+                          [lvar# (sh/get-spec ~'conn spec# (get state# lvar#))])
                         (into {}))))))))

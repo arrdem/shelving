@@ -8,16 +8,13 @@
             [clojure.core.match :refer [match]]
             [shelving.spec :refer [keys-as-map]]))
 
-;; Not a require to avoid a cyclic dependency
-(alias 'sh 'shelving.core)
-
 (declare walk-with-spec)
 
 (defmulti walk-with-spec*
   "Implementation detail of walk-with-spec.
 
   Uses multiple dispatch to handle actually walking the spec tree."
-  {:categories #{::sh/walk}
+  {:categories #{:shelving.core/walk}
    :stability  :stability/unstable
    :added      "0.0.0"
    :arglists   '([spec-kw spec obj before after])}
@@ -39,8 +36,21 @@
     (throw (UnsupportedOperationException.
             (format "Could not walk unknown value '%s'" (pr-str unknown))))))
 
-(def ^:dynamic *walk-through-aliases* nil)
-(def ^:dynamic *walk-through-multis* nil)
+(def ^{:dynamic    true
+       :categories #{:shelving.core/walk}
+       :stability  :stability/unstable
+       :added      "0.0.0"
+       :doc        "Optional counter indicating how many spec kw aliases to traverse through.
+Default is `nil`, meaning infinitely many."}
+  *walk-through-aliases* nil)
+
+(def ^{:dynamic    true
+       :categories #{:shelving.core/walk}
+       :stability  :stability/unstable
+       :added      "0.0.0"
+       :doc        "Optional counter indicating how many multispecs to traverse through.
+Default is `nil`, meaning infinitely many."}
+  *walk-through-multis* nil)
 
 (defmacro ^:private with-counter [counter-var then else]
   `(if (or (nil? ~counter-var)
@@ -178,7 +188,7 @@
   If an `Exception` is thrown while traversing, no teardown is
   provided. `before` functions SHOULD NOT rely on `after` being called
   to maintain global state."
-  {:categories #{::sh/walk}
+  {:categories #{:shelving.core/walk}
    :stability  :stability/unstable
    :added      "0.0.0"}
   [before after spec-kw obj]
@@ -192,7 +202,7 @@
   "A postwalk according to the spec.
 
   See `#'walk-with-spec` for details."
-  {:categories #{::sh/walk}
+  {:categories #{:shelving.core/walk}
    :stability  :stability/unstable
    :added      "0.0.0"}
   [f spec-kw obj]
@@ -202,7 +212,7 @@
   "A prewalk according to the spec.
 
   See `#'walk-with-spec` for details."
-  {:categories #{::sh/walk}
+  {:categories #{:shelving.core/walk}
    :stability  :stability/unstable
    :added      "0.0.0"}
   [f spec-kw obj]

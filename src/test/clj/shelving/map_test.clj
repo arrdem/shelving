@@ -4,7 +4,7 @@
             [shelving.common-test :refer [common-tests]])
   (:import [java.io File]))
 
-#_(t/deftest map-test
-    (let [f (File/createTempFile "map-test" ".edn")]
-      (.delete f)
-      (common-tests #(->MapShelf % f))))
+(t/deftest map-test
+  (let [f (File/createTempFile "map-test" ".edn")]
+    (.delete f)
+    (common-tests #(->MapShelf % f))))

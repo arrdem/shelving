@@ -1,63 +1,54 @@
 (ns shelving.map-shelf
-  "An entirely in-memory shelf based on mappings.
-
-  Really only useful for development.
-  Grossly inappropriate for most applications."
-  {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
-   :license "Eclipse Public License 1.0",
+  "A naive EDN backed shelving unit."
+  {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"]
+   :license "Eclipse Public License 1.0"
    :added   "0.1.0"}
-  (:require [clojure.edn :as edn]
+  (:require [shelving.core :as sh]
+            [shelving.impl :as impl]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
-            [shelving.core :as sh]
-            [shelving.impl :as imp]))
+            [clojure.set :refer [superset?]]))
 
 ;; Configs open into shelves
-(defmethod imp/open ::config [{:keys [path schema load] :as s}]
+(defmethod impl/open ::config [{:keys [path schema load] :as s}]
   (when-not load
     (binding [*out* *err*]
       (println "Warning: opening connection without trying to load existing data set!")))
-  (let [state           (-> (if (and load
-                                     (.exists (io/file path)))
-                              (-> path
-                                  io/reader
-                                  java.io.PushbackReader.
-                                  edn/read
-                                  ((fn [v] (assert (map? v)) v)))
-                              {})
-                            atom)
-        conn            (-> s
-                            (assoc :type ::shelf)
-                            (assoc ::state state))
-        persisted-specs (-> state deref :schema)
-        our-specs       (sh/schema->specs schema)]
-    ;; Check the persisted schema
-    (sh/check-schemas! persisted-specs our-specs)
-    
-    ;; Install the schema updates in a new db 
-    (swap! state update :schema merge our-specs)
+  (let [{persisted-schema :schema :as persisted-state}
+        (if (and load
+                 (.exists (io/file path)))
+          (-> path
+              io/reader
+              java.io.PushbackReader.
+              edn/read
+              ((fn [v] (assert (map? v)) v)))
+          {})
 
-    ;; Validate any loaded data
-    (doseq [spec (sh/enumerate-specs conn)
-            id   (sh/enumerate-spec conn spec)
-            :let [record (sh/get conn spec id)]]
-      (if-not (s/valid? spec record)
-        (throw (ex-info "Failed to validate record!"
-                        {:spec        spec
-                         :record-id   id
-                         :record      record
-                         :explanation (s/explain spec record)}))))
+        live-schema
+        ;; Validate that the new schema supersets the old
+        (if (and persisted-schema
+                 (not (superset? (:specs schema) (:specs persisted-schema))))
+          ;; If we have a mismatch, throw
+          (throw (ex-info "Persisted schema does not validate against loaded schema!"
+                          {:persisted  persisted-schema
+                           :configured schema}))
+          ;; Install the schema in a new db
+          (merge persisted-schema schema))]
 
-    conn))
+    {:type ::shelf, ::state (atom (assoc persisted-state :schema live-schema))}))
 
 ;; EDN shelves don't have write batching and are always open.
-(defmethod imp/open ::shelf [s] s)
+(defmethod impl/open ::shelf [s] s)
 
-(defmethod imp/schema ::shelf [{:keys [schema]}]
-  schema)
+(defmethod impl/schema ::shelf [{:keys [::state]}]
+  (:schema @state))
+
+(defmethod impl/set-schema ::shelf [{:keys [::state]} schema*]
+  (swap! state assoc :schema schema*))
 
 ;; EDN shelves don't have write batching and don't have to be closed.
-(defmethod imp/flush ::shelf [{:keys [shelving.trivial-edn/state path]}]
+(defmethod impl/flush ::shelf [{:keys [::state path]}]
   (let [file (io/file path)]
     (if-let [parent (.getParentFile file)]
       (.mkdirs parent))
@@ -67,70 +58,89 @@
                 clojure.core/*print-readably*       true]
         (pr @state)))))
 
-(defmethod imp/close ::shelf [s]
+(defmethod impl/close ::shelf [s]
   (sh/flush s))
 
-(defmethod imp/get-spec ::shelf
+(defmethod impl/get-spec ::shelf
   ([conn spec record-id]
-   (sh/get conn spec record-id nil))
-  ([{:keys [shelving.trivial-edn/state]} spec record-id not-found]
+   (sh/get-spec conn spec record-id nil))
+  ([{:keys [::state]} spec record-id not-found]
    (-> @state (get :records) (get spec) (get record-id not-found))))
 
-(defmethod imp/put-rel ::shelf
-  [{:keys [shelving.trivial-edn/state schema flush-after-write] :as conn} [from-spec to-spec :as rel-id] from-id to-id]
-  (swap! state #(update-in % [:rels (sh/resolve-alias schema rel-id)]
-                           (fn [state]
-                             (-> state
-                                 (update-in [from-spec from-id] (fnil conj #{}) to-id)
-                                 (update-in [to-spec to-id] (fnil conj #{}) from-id)
-                                 (update-in [:pairs] (fnil conj #{}) [from-id to-id])))))
-  (when flush-after-write
-    (sh/flush conn))
-  [from-id rel-id to-id])
+(declare ^:private put*)
 
-(defn- invalidate [rels spec id]
-  (merge (->> (for [[from-spec to-spec :as k] (keys rels)
-                    :when                     (= from-spec spec)
-                    :let                      [v (get rels k)
-                                               from-mappings (get v from-spec)
-                                               to-mappings (get v to-spec)
-                                               pairs (get v :pairs)]]
-                [k {from-spec (dissoc from-mappings id)
-                    to-spec   (into to-mappings
-                                    (for [stale-to (get from-mappings id)]
-                                      [stale-to (disj (get to-mappings stale-to) id)]))
-                    :pairs    (into #{} (remove (comp #{id} first) pairs))}])
-              (into {}))
-         rels))
+(defn- rel-invalidate-record*
+  "Relation implementation detail.
+  Returns a new rel map, with the given record-id's entries purged."
+  [[from-spec to-spec :as rel-id] rel-map record-id]
+  (let [tos (-> rel-map (get from-spec) (get record-id))]
+    (as-> rel-map %
+      (update % from-spec dissoc record-id)
+      (update % :pairs #(remove (comp #{record-id} first) %))
+      (reduce (fn [% to]
+                (update-in % [to-spec to] #(remove #{record-id} %)))
+              % tos))))
 
-(defmethod imp/put-spec ::shelf
-  [{:keys [shelving.trivial-edn/state schema flush-after-write] :as conn} spec id val]
-  (swap! state (fn [state]
-                 (cond-> state
-                   true                        (assoc-in [:records spec id] val)
-                   (sh/is-record? schema spec) (update :rels invalidate spec id))))
+(defn- rel-invalidate-record
+  "Relation implementation detail.
+  Removes all pairs containing the given `record-id` from all rel tables."
+  [rels schema spec record-id]
+  (->> (when (sh/is-record? schema spec)
+         (for [[[from-spec to-spec :as rel-id] rel-map] rels
+               :when                                    (or (= spec from-spec)
+                                                            (= spec to-spec))]
+           [rel-id (rel-invalidate-record* rel-id rel-map record-id)]))
+       (into {})
+       (merge rels)))
+
+(defn- put*
+  "Implementation detail.
+  Backs `#'sh/put`, providing the actual recursive write logic."
+  [state schema spec record-id record]
+  (assert (uuid? record-id))
+  (assert (sh/has-spec? schema spec))
+  (assert (s/valid? spec record))
+  (cond-> state
+    ;; FIXME (arrdem 2018-02-25):
+    ;;   can skip invalidation when we're inserting a new record
+    (sh/is-record? schema spec) (update :rels rel-invalidate-record schema spec record-id)
+    true                        (assoc-in [:records spec record-id] record)))
+
+(defmethod impl/put-spec ::shelf
+  [{:keys [::state flush-after-write] :as conn} spec id val]
+  (swap! state put* (sh/schema conn) spec id val) 
   (when flush-after-write
     (sh/flush conn))
   id)
 
-(defmethod imp/enumerate-spec ::shelf [{:keys [shelving.trivial-edn/state]} spec]
+(defmethod impl/enumerate-spec ::shelf [{:keys [::state]} spec]
   (some-> @state (get :records) (get spec) keys))
 
-(defmethod imp/count-spec ::shelf [{:keys [shelving.trivial-edn/state]} spec]
+(defmethod impl/count-spec ::shelf [{:keys [::state]} spec]
   (or (some-> @state (get :records) (get spec) keys count) 0))
 
-;; FIXME: this will return pairs in the wrong order when given an alias!
-(defmethod imp/enumerate-rel ::shelf [{:keys [shelving.trivial-edn/state schema]} rel]
-  (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) (get :pairs) seq))
+(defmethod impl/put-rel ::shelf [{:keys [::state] :as conn} rel-id from-id to-id]
+  (let [[from-spec to-spec :as rel-id*] (sh/resolve-alias (sh/schema conn) rel-id)
+        [from-id* to-id*]               (if (= rel-id rel-id*) [from-id to-id] [to-id from-id])]
+    (swap! state update-in [:rels rel-id*]
+           (fn [state]
+             (-> state
+                 (update :pairs (fnil conj #{}) [from-id* to-id*])
+                 (update-in [from-spec from-id*] (fnil conj #{}) to-id*)
+                 (update-in [to-spec   to-id*]   (fnil conj #{}) from-id*))))))
 
-(defmethod imp/count-rel ::shelf [{:keys [shelving.trivial-edn/state schema]} rel]
-  (or (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) :pairs count) 0))
+(defmethod impl/enumerate-rel ::shelf [{:keys [::state]} rel]
+  (some-> @state (get :rels) (get rel) (get :pairs) seq))
 
-(defmethod imp/get-rel ::shelf [{:keys [shelving.trivial-edn/state schema]} [from-spec to-spec :as rel] id]
-  (some-> @state (get :rels) (get (sh/resolve-alias schema rel)) (get from-spec) (get id) seq))
+(defmethod impl/count-rel ::shelf [{:keys [::state] :as conn} rel]
+  (or (some-> @state (get :rels) (get (sh/resolve-alias (sh/schema conn) rel)) :pairs count) 0))
+
+(defmethod impl/get-rel ::shelf [{:keys [::state] :as conn} [from-spec to-spec :as rel] id]
+  (some-> @state (get :rels) (get (sh/resolve-alias (sh/schema conn) rel)) (get from-spec) (get id) seq))
 
 (defn ->MapShelf
-  "Configures a mappings based shelf which can be opened for reading and writing."
+  "Configures an in-memory, EDN serialized, association based shelf
+  which can be opened for reading and writing."
   {:categories #{::sh/basic}
    :added      "0.0.0"
    :stability  :stability/stable}

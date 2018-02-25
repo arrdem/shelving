@@ -5,9 +5,9 @@
 The various shelving implementations define their own mechanisms for constructing
 configurations. These operations should be shared by all implementations.
 
-## [shelving.core/put](shelving/core.clj#L143)
- - `(put conn spec val)`
- - `(put conn spec id val)`
+## [shelving.core/put-spec](shelving/core.clj#L144)
+ - `(put-spec conn spec val)`
+ - `(put-spec conn spec id val)`
 
 Destructuring put.
 
@@ -19,9 +19,9 @@ It is an error to specify the ID when inserting into a "value" shelf.
 
 Shelves must implement `#'shelving.impl/put`, which backs this method.
 
-## [shelving.core/get](shelving/core.clj#L171)
- - `(get conn spec record-id)`
- - `(get conn spec record-id not-found)`
+## [shelving.core/get-spec](shelving/core.clj#L172)
+ - `(get-spec conn spec record-id)`
+ - `(get-spec conn spec record-id not-found)`
 
 Restructuring get.
 
@@ -29,7 +29,7 @@ Recovers a record from a shelf according to spec and ID, returning the given `no
 
 Shelves must implement `#'shelving.impl/get`, which backs this method.
 
-## [shelving.core/alter-schema](shelving/core.clj#L189)
+## [shelving.core/alter-schema](shelving/core.clj#L190)
  - `(alter-schema conn f & args)`
 
 Attempts alter the schema of a live connection.

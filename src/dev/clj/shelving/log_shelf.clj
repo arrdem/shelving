@@ -64,7 +64,7 @@
 
 (defmethod imp/get-spec ::shelf
   ([conn spec record-id]
-   (sh/get conn spec record-id nil))
+   (sh/get-rel conn spec record-id nil))
   ([{:keys [::state]} spec record-id not-found]
    (loop [[t & ts* :as ts] @state]
      (if-not ts
