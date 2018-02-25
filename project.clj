@@ -28,7 +28,8 @@
                                        "src/dev/clj"]
                    :java-source-paths ["src/dev/jvm"]
                    :resource-paths    ["src/dev/resources"]
-                   :doc-paths         ["README.md" "docs"]}}
+                   :doc-paths         ["README.md" "docs"]
+                   :aliases           {"build-docs" ["run" "-m" "compile-docs/recompile-docs!"]}}}
 
   :plugins [[me.arrdem/lein-git-version "[2.0.0,3.0.0)"]
             [me.arrdem/lein-auto "0.1.4"]
@@ -48,7 +49,11 @@
                       "0.1.0-SNAPSHOT")))}
 
   :auto {"test" {:file-pattern #"\.(clj|cljs|cljx|cljc|edn|md)$"
-                 :paths        [:source-paths :test-paths :doc-paths]}}
+                 :paths        [:java-source-paths
+                                :source-paths
+                                :resource-paths
+                                :test-paths
+                                :doc-paths]}}
 
   :cljfmt {:indents {quick-check [[:block 1]]
                      for-all     [[:block 1]]}})
