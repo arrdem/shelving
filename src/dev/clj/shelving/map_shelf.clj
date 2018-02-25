@@ -116,8 +116,8 @@
 (defmethod impl/enumerate-spec ::shelf [{:keys [::state]} spec]
   (some-> @state (get :records) (get spec) keys))
 
-(defmethod impl/count-spec ::shelf [{:keys [::state]} spec]
-  (or (some-> @state (get :records) (get spec) keys count) 0))
+(defmethod impl/count-spec ::shelf [conn spec]
+  (count (sh/enumerate-spec conn spec)))
 
 (defmethod impl/put-rel ::shelf [{:keys [::state] :as conn} rel-id from-id to-id]
   (let [[from-spec to-spec :as rel-id*] (sh/resolve-alias (sh/schema conn) rel-id)
@@ -129,11 +129,14 @@
                  (update-in [from-spec from-id*] (fnil conj #{}) to-id*)
                  (update-in [to-spec   to-id*]   (fnil conj #{}) from-id*))))))
 
-(defmethod impl/enumerate-rel ::shelf [{:keys [::state]} rel]
-  (some-> @state (get :rels) (get rel) (get :pairs) seq))
+(defmethod impl/enumerate-rel ::shelf [{:keys [::state] :as conn} rel]
+  (let [schema (sh/schema conn)]
+    (if (sh/is-alias? schema rel)
+      (map reverse (sh/enumerate-rel conn (sh/resolve-alias schema rel)))
+      (some-> @state (get :rels) (get rel) (get :pairs) seq))))
 
 (defmethod impl/count-rel ::shelf [{:keys [::state] :as conn} rel]
-  (or (some-> @state (get :rels) (get (sh/resolve-alias (sh/schema conn) rel)) :pairs count) 0))
+  (count (sh/enumerate-rel conn (sh/resolve-alias (sh/schema conn) rel))))
 
 (defmethod impl/get-rel ::shelf [{:keys [::state] :as conn} [from-spec to-spec :as rel] id]
   (some-> @state (get :rels) (get (sh/resolve-alias (sh/schema conn) rel)) (get from-spec) (get id) seq))

@@ -30,6 +30,13 @@
         _       (t/is (= (sh/schema conn) schema*))]
     nil))
 
+(defn check-forwards-backwards-rels [conn]
+  (doseq [rel-id (sh/enumerate-rels conn)]
+    (t/is (= (set (sh/enumerate-rel conn rel-id))
+             (set (->> (sh/enumerate-rel conn (reverse rel-id))
+                       (map reverse))))
+          (format "Relation %s didn't forwards/backwards check!" rel-id))))
+
 (defn put-get-enumerate-example-tests [->cfg]
   (let [foo-gen (s/gen ::foo)
         baz-gen (s/gen ::baz)]
@@ -89,7 +96,9 @@
           (t/is baz-id)
           ;; Relations are bidirectional on read, unidirectional on write.
           (t/is (some #{foo-id} (sh/get-rel conn [::baz ::foo] baz-id)))
-          (t/is (some #{baz-id} (sh/get-rel conn [::foo ::baz] foo-id))))))))
+          (t/is (some #{baz-id} (sh/get-rel conn [::foo ::baz] foo-id)))
+
+          (check-forwards-backwards-rels conn))))))
 
 (defn record-rel-tests [->cfg]
   (let [foo-gen (s/gen ::foo)
@@ -125,7 +134,9 @@
 
           ;; The rel should be counted, and equal in cardinality going either way
           (t/is (= (sh/count-rel conn [::baz ::foo])
-                   (sh/count-rel conn [::foo ::baz]))))))))
+                   (sh/count-rel conn [::foo ::baz])))
+
+          (check-forwards-backwards-rels conn))))))
 
 (defn rel-tests [->cfg]
   (value-rel-tests ->cfg)
