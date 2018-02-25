@@ -9,7 +9,7 @@
   :type)
 
 (s/def ::package
-  (s/multi-spec grimoire/package->spec :package))
+  (s/multi-spec package->spec :package))
 
 (s/def :org.maven/type #{:org.maven/package})
 (s/def :org.maven/group string?)
@@ -39,7 +39,7 @@
   :type)
 
 (s/def ::entity
-  (s/multi-spec grimoire/entity->spec :entity))
+  (s/multi-spec entity->spec :entity))
 
 (s/def :org.clojure.namespace/name
   string?)
@@ -92,7 +92,7 @@
 (defmulti annotation->package :type)
 
 (s/def ::annotation
-  (s/multi-spec grimoire/annotation->spec :annotation))
+  (s/multi-spec annotation->spec :annotation))
 
 ;; Metadata
 (s/def :org.clojure-grimoire.example/metadata

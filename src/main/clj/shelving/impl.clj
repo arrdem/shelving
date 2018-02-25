@@ -177,7 +177,8 @@
   {:categories #{::basic}
    :stability  :stability/stable
    :added      "0.0.0"
-   :arglists   '([conn schema])})
+   :arglists   '([conn schema])}
+  #'dx)
 
 (required! set-schema)
 

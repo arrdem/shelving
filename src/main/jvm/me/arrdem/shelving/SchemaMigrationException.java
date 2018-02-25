@@ -1,6 +1,6 @@
 package me.arrdem.shelving;
 
-import me.arrdem.Exception;
+import me.arrdem.shelving.Exception;
 
 /**
  * An exception for when Shelving schema migrations fail.

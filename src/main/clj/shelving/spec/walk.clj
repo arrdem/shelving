@@ -4,6 +4,7 @@
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:require [clojure.spec.alpha :as s]
+            [clojure.tools.logging :as log]
             [clojure.core.match :refer [match]]
             [shelving.spec :refer [keys-as-map]]))
 
@@ -11,14 +12,6 @@
 (alias 'sh 'shelving.core)
 
 (declare walk-with-spec)
-
-(def ^{:dynamic    true
-       :categories #{::sh/walk}
-       :stability  :stability/unstable
-       :added      "0.0.0"
-       :doc        "Dynamic variable controlling whether `#'walk-with-spec` logs its progress to `*err*`."}
-  *trace-walk*
-  false)
 
 (defmulti walk-with-spec*
   "Implementation detail of walk-with-spec.
@@ -28,10 +21,8 @@
    :stability  :stability/unstable
    :added      "0.0.0"
    :arglists   '([spec-kw spec obj before after])}
-  (fn [name spec _ _ _]
-    (when *trace-walk*
-      (binding [*out* *err*]
-        (println `walk-with-spec* "DEBUG ]" name spec)))
+  (fn [name spec obj _ _]
+    (log/debug name spec (pr-str obj))
     (if (seq? spec)
       (first spec)
       (if (qualified-keyword? spec)
@@ -55,9 +46,8 @@
   (as-> obj %
     (before spec %)
     (do (s/assert spec %) %)
-    (if *walk-through-aliases*
-      (walk-with-spec before after (some-> spec s/get-spec s/describe*) %)
-      %)
+    (if *walk-through-aliases* (walk-with-spec before after (some-> spec s/get-spec s/describe*) %)
+        %)
     (after spec %)))
 
 (defmethod walk-with-spec* ::predicate [spec pred obj before after]
@@ -69,10 +59,10 @@
 (defmethod walk-with-spec* `s/multi-spec [spec [_ mm k] obj before after]
   (as-> obj %
     (before spec %)
-    (do (s/assert spec %) %)
+    (do (s/assert spec %) %) 
     (let [spec* ((find-var mm) %)]
-      (assert (qualified-keyword? spec*))
-      (walk-with-spec before after spec* %))))
+      (if *walk-through-aliases* (walk-with-spec before after spec* %) %))
+    (after spec %)))
 
 (defmethod walk-with-spec* `s/keys [spec keys-form obj before after]
   (as-> obj %

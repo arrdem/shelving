@@ -5,7 +5,8 @@
             [grimoire :refer :all :as g]))
 
 (def *conn
-  (-> (->LogShelf schema "target/grim.edn"
+  (-> schema
+      (->LogShelf "target/grim.edn"
                   :load false)
       (shelving/open)))
 
@@ -20,8 +21,6 @@
 
 (def clj-180-clojure-core
   (->namespace clj-180 "clj" "clojure.core"))
-
-(shelving/flush *conn)
 
 (t/deftest test-indexing
   (let [;; write some CLJ versions

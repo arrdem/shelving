@@ -20,7 +20,10 @@
             [shelving.impl :as impl]
             [shelving.schema :as schema]
             [shelving.impl :as imp])
-  (:import me.arrdem.shelving.SchemaMigrationException))
+  (:import [me.arrdem.shelving
+            SchemaMigrationException
+            MissingRelException
+            MissingSpecException]))
 
 ;; Data specs
 ;;--------------------------------------------------------------------------------------------------
@@ -87,33 +90,55 @@
 
 (declare alter-schema)
 
+(defn- ensure-spec! [conn spec]
+  (let [schema (schema conn)]
+    (cond (has-spec? schema spec)
+          schema
+          
+          (not (automatic-specs? schema))
+          (throw (MissingSpecException.
+                  (format "Attempted to insert into unknown spec %s!" spec)))
+
+          :else
+          (alter-schema conn record-spec spec))))
+
+(defn- ensure-rel! [conn rel]
+  (let [schema (schema conn)]
+    (cond (has-rel? schema rel)
+          schema
+
+          (not (automatic-rels? schema))
+          (throw (MissingRelException.
+                  (format "Attempted to insert into unknown rel %s!" rel)))
+
+          :else
+          (alter-schema conn spec-rel rel))))
+
 (defn- put*
   "Recursively traverse the given value, decomposing it into its
   constituent parts via a depth-first traversal, writing those parts
   and the appropriate relations to the shelving store if they don't
   exist already."
   [conn spec id val]
-  (let [schema (imp/schema conn)]
-    (loop [[t & queue* :as queue] [[:record spec id val]], dirty? #{}]
-      (if (empty? queue) id
-          (match t
-            [:record spec* id* val*]
-            (if-not (has-spec? schema spec)
-              (do (log/warnf "Attempted to insert into unknown spec %s!" spec*)
-                  (recur queue* dirty?))
-              (if-not (and (has? conn spec* id*)
-                           (is-value? schema spec*))
-                (do (imp/put-spec conn spec* id* val*)
-                    (recur (into queue* (schema/decompose schema spec* id* val*)) (conj dirty? id*)))
-                (recur queue* dirty?)))
+  (loop [[t & queue* :as queue] [[:record spec id val]], dirty? #{}]
+    (if (empty? queue) id
+        (match t
+          [:record spec* id* val*]
+          (let [schema* (ensure-spec! conn spec)]
+            (if (and (has? conn spec* id*)
+                     (is-value? schema* spec*))
+              ;; skip the write
+              (recur queue* dirty?)
+              (do (imp/put-spec conn spec* id* val*)
+                  (recur (into queue*
+                               (schema/decompose schema* spec* id* val*))
+                         (conj dirty? id*)))))
 
-            [:rel rel-id from-id to-id]
-            (do (if-not (has-rel? schema rel-id)
-                  (log/warnf "Attempted to insert into unknown rel %s!" rel-id)
-                  (when (or (dirty? from-id) (dirty? to-id))
-                    (imp/put-rel conn rel-id from-id to-id)))
-                (recur queue* dirty?)))))
-    id))
+          [:rel rel-id from-id to-id]
+          (do (ensure-rel! conn rel-id)
+              (imp/put-rel conn rel-id from-id to-id)
+              (recur queue* dirty?)))))
+  id)
 
 (defn put
   "Destructuring put.
@@ -198,5 +223,5 @@
                 "Failed to validate the migrated schema!" problems))
         ;; FIXME: this is SUPER FUCKING DANGEROUS. Who knows what the storage layer is gonna do. If
         ;; this throws, we're kinda shit out of luck here.
-        (do (imp/set-schema conn schema)
-            schema)))))
+        (do (imp/set-schema conn schema*)
+            schema*)))))

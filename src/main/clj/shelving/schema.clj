@@ -67,7 +67,6 @@
             (and l r (not (:record? l)) (not (:record? r))))
         {:type    ::spec
          :record? (:record? r)
-         :id-fn   (:id-fn r)
          :rels    (into (:rels r #{}) (:rels l))}
 
         :else (throw (ex-info "Illegal state - value/record conflict merging specs!"
@@ -75,12 +74,11 @@
 
 (defn- shelf-spec*
   "Implementation detail of record-spec and value-spec."
-  [schema spec record? id-fn]
+  [schema spec record?]
   (try
     (update-in schema [:specs spec]
                merge-specs {:type    ::spec
                             :record? record?
-                            :id-fn   id-fn
                             :rels    #{}})
     (catch clojure.lang.ExceptionInfo e
       (throw (ex-info (format "Error installing spec '%s' to schema!" spec)
@@ -136,7 +134,7 @@
   (reduce #(cond-> %1
              (not (has-spec? %1 %2))       (value-spec %2) 
              (not (has-rel? %1 [spec %2])) (spec-rel [spec %2]))
-          (shelf-spec* schema spec false uuid)
+          (shelf-spec* schema spec false)
           (filter qualified-keyword?
                   (ss/subspec-pred-seq spec))))
 
@@ -170,8 +168,8 @@
   (when (not-empty opts)
     (binding [*out* *err*]
       (println "Warning: record-spec got ignored opts" opts)))
-  (reduce #(shelf-spec* %1 %2 false uuid)
-          (shelf-spec* schema spec true random-uuid)
+  (reduce #(shelf-spec* %1 %2 false)
+          (shelf-spec* schema spec true)
           (rest (ss/spec-seq spec))))
 
 (defn automatic-specs
@@ -202,11 +200,13 @@
    :stability  :stability/stable
    :added      "0.0.0"}
   [schema spec val]
-  {:pre [(has-spec? schema spec)]}
-  (let [key-fn (-> schema
-                   :specs
-                   (clojure.core/get spec)
-                   (clojure.core/get :id-fn random-uuid))]
+  {:pre [(or (automatic-specs? schema)
+             (has-spec? schema spec))]}
+  (let [key-fn (if (-> schema
+                       :specs
+                       (clojure.core/get spec)
+                       (clojure.core/get :record?))
+                 random-uuid uuid)]
     (key-fn val)))
 
 (defn schema->specs
@@ -302,7 +302,8 @@
   [schema [from-spec to-spec :as rel-id]]
   {:pre [(s/get-spec from-spec)
          (s/get-spec to-spec)
-         (contains? (set (ss/subspec-pred-seq from-spec)) to-spec)
+         (or (contains? (set (ss/subspec-pred-seq from-spec)) to-spec)
+             (= `s/multi-spec (first (s/describe* (s/get-spec from-spec)))))
          (not (is-record? schema to-spec))]}
   (spec-rel* schema rel-id))
 
