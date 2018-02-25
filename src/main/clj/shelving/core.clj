@@ -100,9 +100,9 @@
                   (format "Attempted to insert into unknown spec %s!" spec)))
 
           :else
-          (alter-schema conn record-spec spec))))
+          (alter-schema conn value-spec spec))))
 
-(defn- ensure-rel! [conn rel]
+(defn- ensure-rel! [conn [from to :as rel]]
   (let [schema (schema conn)]
     (cond (has-rel? schema rel)
           schema
@@ -112,7 +112,9 @@
                   (format "Attempted to insert into unknown rel %s!" rel)))
 
           :else
-          (alter-schema conn spec-rel rel))))
+          (do (ensure-spec! conn from)
+              (ensure-spec! conn to)
+              (alter-schema conn spec-rel rel)))))
 
 (defn- put*
   "Recursively traverse the given value, decomposing it into its
@@ -122,22 +124,23 @@
   [conn spec id val]
   (loop [[t & queue* :as queue] [[:record spec id val]], dirty? #{}]
     (if (empty? queue) id
-        (match t
-          [:record spec* id* val*]
-          (let [schema* (ensure-spec! conn spec)]
-            (if (and (has? conn spec* id*)
-                     (is-value? schema* spec*))
-              ;; skip the write
-              (recur queue* dirty?)
-              (do (imp/put-spec conn spec* id* val*)
-                  (recur (into queue*
-                               (schema/decompose schema* spec* id* val*))
-                         (conj dirty? id*)))))
+        (do (log/debug t)
+            (match t
+              [:record spec* id* val*]
+              (let [schema* (ensure-spec! conn spec)] 
+                (if (and (has? conn spec* id*)
+                         (is-value? schema* spec*))
+                  ;; skip the write
+                  (recur queue* dirty?)
+                  (do (imp/put-spec conn spec* id* val*)
+                      (recur (into queue*
+                                   (schema/decompose schema* spec* id* val*))
+                             (conj dirty? id*)))))
 
-          [:rel rel-id from-id to-id]
-          (do (ensure-rel! conn rel-id)
-              (imp/put-rel conn rel-id from-id to-id)
-              (recur queue* dirty?)))))
+              [:rel rel-id from-id to-id]
+              (do (ensure-rel! conn rel-id)
+                  (imp/put-rel conn rel-id from-id to-id)
+                  (recur queue* dirty?))))))
   id)
 
 (defn put

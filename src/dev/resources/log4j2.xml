@@ -7,8 +7,20 @@
   </Appenders>
 
   <Loggers>
+    <Logger name="shelving.core" level="warn">
+      <AppenderRef ref="Console" />
+    </Logger>
+
+    <Logger name="shelving.schema" level="warn">
+      <AppenderRef ref="Console" />
+    </Logger>
+
+    <Logger name="shelving.spec" level="warn">
+      <AppenderRef ref="Console" />
+    </Logger>
+ 
     <Root level="debug">
       <AppenderRef ref="Console"/>
     </Root>
   </Loggers>
-</Configuration>
+  </Configuration>

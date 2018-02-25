@@ -302,9 +302,12 @@
   [schema [from-spec to-spec :as rel-id]]
   {:pre [(s/get-spec from-spec)
          (s/get-spec to-spec)
-         (or (contains? (set (ss/subspec-pred-seq from-spec)) to-spec)
-             (= `s/multi-spec (first (s/describe* (s/get-spec from-spec)))))
+         (has-spec? schema from-spec)
+         (has-spec? schema to-spec)
          (not (is-record? schema to-spec))]}
+  (if-not (or (contains? (set (ss/subspec-pred-seq from-spec)) to-spec)
+              (= `s/multi-spec (first (s/describe* (s/get-spec from-spec)))))
+    (log/warnf "Creating rel %s which could not be shown directly using specs!" rel-id))
   (spec-rel* schema rel-id))
 
 (defn has-rel?
@@ -398,15 +401,15 @@
    :added      "0.0.0"}
   [schema spec id val]
   (let [acc! (volatile! [])]
-    (binding [s.w/*walk-through-aliases* false]
+    (binding [s.w/*walk-through-aliases* nil
+              s.w/*walk-through-multis*  nil]
       (s.w/postwalk-with-spec
        (fn [subspec subval]
-         (if (and (qualified-keyword? subspec)
-                  (not= spec subspec))
+         (when (and (qualified-keyword? subspec)
+                    (not= spec subspec))
            (let [id* (id-for-record schema subspec subval)]
              (vswap! acc! conj [:record subspec id* subval])
-             (vswap! acc! conj [:rel [spec subspec] id id*])
-             id*)
-           subval))
+             (vswap! acc! conj [:rel [spec subspec] id id*])))
+         subval)
        spec val)
       @acc!)))
