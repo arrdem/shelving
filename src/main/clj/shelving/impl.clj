@@ -30,7 +30,7 @@
   "Opens a shelf for reading or writing.
 
   Shelves must implement this method."
-  {:categories #{::basic}
+  {:categories #{:shelving.core/impl :shelving.core/basic}
    :stability  :stability/stable
    :added      "0.0.0"
    :arglists   '([config])}
@@ -44,7 +44,7 @@
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
-  {:categories #{::basic}
+  {:categories #{:shelving.core/impl :shelving.core/basic}
    :stability  :stability/stable
    :added      "0.0.0"
    :arglists   '([conn])}
@@ -58,7 +58,7 @@
   Shelves may implement this method.
 
   By default just flushes."
-  {:categories #{::basic}
+  {:categories #{:shelving.core/impl :shelving.core/basic}
    :stability  :stability/stable
    :added      "0.0.0"
    :arglists   '([conn])}
@@ -66,42 +66,6 @@
 
 (defmethod close :default [t]
   (flush t))
-
-(defmulti get-spec
-  "Fetches a single tuple, being part of a record, from a shelf by its spec and ID.
-
-  Returns the record if it exists, otherwise returning the
-  user-provided `not-found` value, taken to be `nil` by default.
-
-  Implementation detail of `#'shelving.core/get`, which should be preferred by users.
-  
-  Shelves must implement this method.
-
-  By default throws `me.arrdem.UnimplementedOperationException`."
-  {:categories #{::basic}
-   :stability  :stability/stable
-   :added      "0.0.0"
-   :arglists   '([conn spec record-id]
-                 [conn spec record-id not-found])}
-  #'dx)
-
-(defmulti has?
-  "Indicates whether a shelf has a record of a spec.
-
-  Returns `true` if and only if the shelf contains a record if the
-  given spec and ID.  Otherwise must return `false`.
-
-  Implementations may provide alternate implementations of this
-  method."
-  {:categories #{::basic}
-   :stability  :stability/stable
-   :added      "0.0.0"
-   :arglists   '([conn spec record-id])}
-  #'dx)
-
-(defmethod has? :default [conn spec record-id]
-  (let [not-found (Object.)]
-    (not= not-found (get-spec conn spec record-id not-found))))
 
 (defmulti put-spec
   "The \"raw\" put operation on values. Inserts a fully decomposed
@@ -117,11 +81,47 @@
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
-  {:categories #{::basic}
+  {:categories #{:shelving.core/impl :shelving.core/basic}
    :stability  :stability/stable
    :added      "0.0.0"
    :arglists   '([conn spec id val])}
   #'dx)
+
+(defmulti get-spec
+  "Fetches a single tuple, being part of a record, from a shelf by its spec and ID.
+
+  Returns the record if it exists, otherwise returning the
+  user-provided `not-found` value, taken to be `nil` by default.
+
+  Implementation detail of `#'shelving.core/get`, which should be preferred by users.
+  
+  Shelves must implement this method.
+
+  By default throws `me.arrdem.UnimplementedOperationException`."
+  {:categories #{:shelving.core/impl :shelving.core/basic}
+   :stability  :stability/stable
+   :added      "0.0.0"
+   :arglists   '([conn spec record-id]
+                 [conn spec record-id not-found])}
+  #'dx)
+
+(defmulti has?
+  "Indicates whether a shelf has a record of a spec.
+
+  Returns `true` if and only if the shelf contains a record if the
+  given spec and ID.  Otherwise must return `false`.
+
+  Implementations may provide alternate implementations of this
+  method."
+  {:categories #{:shelving.core/impl :shelving.core/basic}
+   :stability  :stability/stable
+   :added      "0.0.0"
+   :arglists   '([conn spec record-id])}
+  #'dx)
+
+(defmethod has? :default [conn spec record-id]
+  (let [not-found (Object.)]
+    (not= not-found (get-spec conn spec record-id not-found))))
 
 (required! put-spec)
 
@@ -137,7 +137,7 @@
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
-  {:categories #{::basic}
+  {:categories #{:shelving.core/impl :shelving.core/basic}
    :stability  :stability/stable
    :added      "0.0.0"
    :arglists   '([conn spec rel-id from-id to-id])}
@@ -153,7 +153,7 @@
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
-  {:categories #{::basic}
+  {:categories #{:shelving.core/impl :shelving.core/basic}
    :stability  :stability/stable
    :added      "0.0.0"
    :arglists   '([conn])}
@@ -174,7 +174,7 @@
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
-  {:categories #{::basic}
+  {:categories #{:shelving.core/impl :shelving.core/basic}
    :stability  :stability/stable
    :added      "0.0.0"
    :arglists   '([conn schema])}
@@ -186,7 +186,7 @@
   "Enumerates all the known specs.
 
   Shelves may provide alternate implementations of this method."
-  {:categories #{::schema}
+  {:categories #{:shelving.core/impl :shelving.core/schema}
    :stability  :stability/stable
    :added      "0.0.0"
    :arglists   '([conn])}
@@ -201,7 +201,7 @@
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
-  {:categories #{::schema}
+  {:categories #{:shelving.core/impl :shelving.core/schema}
    :stability  :stability/stable
    :added      "0.0.0"
    :arglists   '([conn spec])}
@@ -219,7 +219,7 @@
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
-  {:categories #{::query}
+  {:categories #{:shelving.core/impl :shelving.core/query}
    :stability  :stability/unstable
    :added      "0.0.1"
    :arglists   '([conn spec])}
@@ -231,7 +231,7 @@
   "Enumerates all the known rels by ID (their `[from-spec to-spec]` pair). Includes aliases.
 
   Shelves may provide alternate implementation of this method."
-  {:categories #{::rel}
+  {:categories #{:shelving.core/impl :shelving.core/rel}
    :stability  :stability/stable
    :added      "0.0.0"
    :arglists   '([conn])}
@@ -246,7 +246,7 @@
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
-  {:categories #{::rel}
+  {:categories #{:shelving.core/impl :shelving.core/rel}
    :stability  :stability/stable
    :added      "0.0.0"
    :arglists   '([conn rel-id])}
@@ -264,7 +264,7 @@
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
-  {:categories #{::query}
+  {:categories #{:shelving.core/impl :shelving.core/query}
    :stability  :stability/unstable
    :added      "0.0.1"
    :arglists   '([conn rel-id])}
@@ -289,7 +289,7 @@
   of the pairs constituting this relation.
 
   Shelves may provide more efficient implementations of this method."
-  {:categories #{::rel}
+  {:categories #{:shelving.core/impl :shelving.core/rel}
    :stability  :stability/unstable
    :added      "0.0.0"
    :arglists   '([conn rel-id spec id])}
@@ -301,4 +301,3 @@
                       #(when (= id (first %)) (second %))
                       #(when (= id (second %)) (first %)))]
     (keep f (enumerate-rel conn real-rel-id))))
-

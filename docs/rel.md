@@ -42,3 +42,35 @@ artifact?" or "what versions of ring are there?".
 The relations API provides a way to describe how to decompose a spec into its component values so
 that indices can be built for efficient query access.
 
+## [shelving.core/enumerate-rels](shelving/impl.clj#L230)
+ - `(enumerate-rels conn)`
+
+Enumerates all the known rels by ID (their `[from-spec to-spec]` pair). Includes aliases.
+
+Shelves may provide alternate implementation of this method.
+
+## [shelving.core/enumerate-rel](shelving/impl.clj#L243)
+ - `(enumerate-rel conn rel-id)`
+
+Enumerates the `(from-id to-id)` pairs of the given rel(ation).
+
+Shelves must implement this method.
+
+By default throws `me.arrdem.UnimplementedOperationException`.
+
+## [shelving.core/get-rel](shelving/impl.clj#L275)
+ - `(get-rel conn rel-id spec id)`
+
+**UNSTABLE**: This API will probably change in the future
+
+Given a rel(ation) and the ID of an record of the from-rel spec, return a seq of the IDs of records it relates to. If the given ID does not exist on the left side of the given relation, an empty seq must be produced.
+
+If the given ID does not exist on the left side of the given relation, an empty seq must be produced.
+
+Note that if the rel `[a b]` was created with `#'spec-rel`, the rel `[b a]` also exists and is the complement of mapping from `a`s to `b`s defined by `[a b]`.
+
+By default uses [`#'enumerate-rel`](#enumerate-rel) to do a full scan of the pairs constituting this relation.
+
+Shelves may provide more efficient implementations of this method.
+
+

@@ -1,31 +1,8 @@
-## [shelving.walk/*trace-walk*](shelving/walk.clj#L15)
+# Walk API
 
-**UNSTABLE**: This API will probably change in the future
+[back to the index](/README.md#usage)
 
-Dynamic variable controlling whether `#'walk-with-spec` logs its progress to `*err*`.
-
-## [shelving.spec.walk/walk-with-spec*](shelving/spec/walk.clj#L13)
- - `(walk-with-spec* spec-kw spec obj before after)`
-
-**UNSTABLE**: This API will probably change in the future
-
-Implementation detail of walk-with-spec.
-
-Uses multiple dispatch to handle actually walking the spec tree.
-
-## [shelving.spec.walk/*walk-through-aliases*](shelving/spec/walk.clj#L39)
-
-**UNSTABLE**: This API will probably change in the future
-
-Optional counter indicating how many spec kw aliases to traverse through.
-Default is `nil`, meaning infinitely many.
-
-## [shelving.spec.walk/*walk-through-multis*](shelving/spec/walk.clj#L47)
-
-**UNSTABLE**: This API will probably change in the future
-
-Optional counter indicating how many multispecs to traverse through.
-Default is `nil`, meaning infinitely many.
+Tools for walking data structures, with walks directed by `clojure.spec(.alpha)`.
 
 ## [shelving.spec.walk/walk-with-spec](shelving/spec/walk.clj#L163)
  - `(walk-with-spec before after spec-kw obj)`
@@ -46,6 +23,20 @@ Note: predicates are considered to be terminals. No effort is currently made to 
 
 If an `Exception` is thrown while traversing, no teardown is provided. `before` functions SHOULD NOT rely on `after` being called to maintain global state.
 
+## [shelving.spec.walk/*walk-through-aliases*](shelving/spec/walk.clj#L39)
+
+**UNSTABLE**: This API will probably change in the future
+
+Optional counter indicating how many spec kw aliases to traverse through.
+Default is `nil`, meaning infinitely many.
+
+## [shelving.spec.walk/*walk-through-multis*](shelving/spec/walk.clj#L47)
+
+**UNSTABLE**: This API will probably change in the future
+
+Optional counter indicating how many multispecs to traverse through.
+Default is `nil`, meaning infinitely many.
+
 ## [shelving.spec.walk/postwalk-with-spec](shelving/spec/walk.clj#L201)
  - `(postwalk-with-spec f spec-kw obj)`
 
@@ -63,4 +54,14 @@ See `#'walk-with-spec` for details.
 A prewalk according to the spec.
 
 See `#'walk-with-spec` for details.
+
+## [shelving.spec.walk/walk-with-spec*](shelving/spec/walk.clj#L13)
+ - `(walk-with-spec* spec-kw spec obj before after)`
+
+**UNSTABLE**: This API will probably change in the future
+
+Implementation detail of walk-with-spec.
+
+Uses multiple dispatch to handle actually walking the spec tree.
+
 

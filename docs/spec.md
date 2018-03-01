@@ -1,4 +1,4 @@
-## [shelving.spec/keys-as-map](shelving/spec.clj#L12)
+## [shelving.spec/keys-as-map](shelving/spec.clj#L13)
  - `(keys-as-map keys-form)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -46,4 +46,5 @@ Given a keyword naming a spec, recursively return a sequence of the distinct key
 Throws if a `::s/unknown` spec is encountered.
 
 Named for `#'file-seq`.
+
 

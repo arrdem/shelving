@@ -40,11 +40,14 @@
   (doseq [f files]
     (log/infof "Updating %s" f)
     (try (let [buff (slurp f)]
-           (str/replace buff var-doc-pattern
-                        (fn [[_ heading name path line _body]]
-                          (let [sym (symbol name)]
+           (spit f
+                 (str/replace buff var-doc-pattern
+                        (fn [[original heading name path line _body]]
+                          (try (let [sym (symbol name)]
                             (require (symbol (namespace sym)))
-                            (some-> sym resolve (document-var heading))))))
+                            (some-> sym resolve (document-var heading)))
+                               (catch Exception e
+                                 original))))))
          (catch Exception e
            (log/errorf "Encountered error while updating %s:\n%s" f e)))))
 

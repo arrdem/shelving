@@ -5,6 +5,38 @@
 The various shelving implementations define their own mechanisms for constructing
 configurations. These operations should be shared by all implementations.
 
+## [shelving.core/open](shelving/impl.clj#L29)
+ - `(open config)`
+
+Opens a shelf for reading or writing.
+
+Shelves must implement this method.
+
+## [shelving.core/flush](shelving/impl.clj#L41)
+ - `(flush conn)`
+
+Flushes (commits) an open shelf.
+
+Shelves must implement this method.
+
+By default throws `me.arrdem.UnimplementedOperationException`.
+
+## [shelving.core/close](shelving/impl.clj#L55)
+ - `(close conn)`
+
+Closes an open shelf.
+
+Shelves may implement this method.
+
+By default just flushes.
+
+## [shelving.core/enumerate-specs](shelving/impl.clj#L185)
+ - `(enumerate-specs conn)`
+
+Enumerates all the known specs.
+
+Shelves may provide alternate implementations of this method.
+
 ## [shelving.core/put-spec](shelving/core.clj#L144)
  - `(put-spec conn spec val)`
  - `(put-spec conn spec id val)`
@@ -29,18 +61,13 @@ Recovers a record from a shelf according to spec and ID, returning the given `no
 
 Shelves must implement `#'shelving.impl/get`, which backs this method.
 
-## [shelving.core/alter-schema](shelving/core.clj#L190)
- - `(alter-schema conn f & args)`
+## [shelving.core/has?](shelving/impl.clj#L108)
+ - `(has? conn spec record-id)`
 
-Attempts alter the schema of a live connection.
+Indicates whether a shelf has a record of a spec.
 
-I CANNOT EMPHASIZE ENOUGH HOW DANGEROUS THIS COULD BE.
+Returns `true` if and only if the shelf contains a record if the given spec and ID.  Otherwise must return `false`.
 
-1. Gets the live schema from the connection 2. Attempts to apply the schema altering function 3. Attempts to validate that the produced new schema is compatible 4. Irreversibly writes the new schema to the store
+Implementations may provide alternate implementations of this method.
 
-Applies the given transformer function to the current live schema and the given arguments. Checks that the resulting schema is compatible with the existing schema (eg. strictly additive), sending the schema change to the connection only if compatibility checking succeeds.
-
-Returns the new schema.
-
-Throws `me.arrdem.shelving.SchemaMigrationexception` without impacting the connection or its backing store if schema incompatibilities are detected.
 

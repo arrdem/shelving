@@ -75,7 +75,7 @@
   enumerate-specs enumerate-rels
   count-spec count-rel
   enumerate-spec enumerate-rel 
-  get-rel]
+  put-rel get-rel]
  [shelving.schema
   empty-schema value-spec record-spec
   has-spec? is-value? is-record?

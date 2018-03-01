@@ -84,3 +84,30 @@ Same as `#'q` but directly accepts arguments and executes the compiled query.
 
 Queries are cached to avoid repeated compilation.
 
+## [shelving.core/count-spec](shelving/impl.clj#L212)
+ - `(count-spec conn spec)`
+
+**UNSTABLE**: This API will probably change in the future
+
+Returns an upper bound on the cardinality of a given spec.
+
+The bound should be as tight as possible if not precise. Implementations of this method should be near constant time and should not require realizing the spec in question.
+
+Shelves must implement this method.
+
+By default throws `me.arrdem.UnimplementedOperationException`.
+
+## [shelving.core/count-rel](shelving/impl.clj#L257)
+ - `(count-rel conn rel-id)`
+
+**UNSTABLE**: This API will probably change in the future
+
+Returns an upper bound on the cardinality of a given relation.
+
+The bound should be as tight as possible if not precise. Implementations of this method should be near constant time and should not require realizing the rel in question.
+
+Shelves must implement this method.
+
+By default throws `me.arrdem.UnimplementedOperationException`.
+
+
