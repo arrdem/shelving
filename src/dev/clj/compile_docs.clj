@@ -16,7 +16,6 @@
 (defn document-var [^clojure.lang.Var v heading]
   (let [{:keys [categories arglists doc stability line file]
          :as   var-meta} (meta v)]
-    (log/infof "Documenting %s" v)
     (with-out-str
       (printf "%s [%s/%s](%s#L%s)\n"
               heading
@@ -34,22 +33,29 @@
       (printf "\n"))))
 
 (def var-doc-pattern
-  #"(?ms)^(?<heading>#{2,}) \[(?<name>[^\]]+?)\]\((?<path>[^\#]+?)#L(?<line>\d+)\)?\n(?<body>.*?)((?=^#{2,} \[)|\Z)")
+  #"(?ms)^(?<heading>#{2,}) \[(?<name>[^\]]+?)\]\((?<path>[^\#]+?)#L(?<line>\d+)\)?\n(?<body>.*?)((?=^#{2,})|\Z)")
 
 (defn recompile-docs [files]
   (doseq [f files]
-    (log/infof "Updating %s" f)
-    (try (let [buff (slurp f)]
-           (spit f
-                 (str/replace buff var-doc-pattern
-                        (fn [[original heading name path line _body]]
-                          (try (let [sym (symbol name)]
-                            (require (symbol (namespace sym)))
-                            (some-> sym resolve (document-var heading)))
-                               (catch Exception e
-                                 original))))))
-         (catch Exception e
-           (log/errorf "Encountered error while updating %s:\n%s" f e)))))
+    (if (.contains (.getCanonicalPath f) "#")
+      (.delete f)
+      (doto (Thread.
+             (fn []
+               (try (let [buff (slurp f)
+                          buff* (str/replace buff var-doc-pattern
+                                             (fn [[original heading name path line _body]]
+                                               (try (let [sym (symbol name)]
+                                                      (require (symbol (namespace sym)))
+                                                      (or (some-> sym resolve (document-var heading))
+                                                          original))
+                                                    (catch Exception e
+                                                      original))))]
+                      (when  (not= buff buff*)
+                        (log/infof "Rebuilt %s" f)
+                        (spit f buff*)))
+                    (catch Exception e
+                      (log/errorf "Encountered error while updating %s:\n%s" f e)))))
+        (.start)))))
 
 (defn recompile-docs!
   "Entry point suitable for a lein alias. Usable for automating doc rebuilding."

@@ -5,14 +5,14 @@
 The various shelving implementations define their own mechanisms for constructing
 configurations. These operations should be shared by all implementations.
 
-## [shelving.core/open](shelving/impl.clj#L29)
+### [shelving.core/open](shelving/impl.clj#L29)
  - `(open config)`
 
 Opens a shelf for reading or writing.
 
 Shelves must implement this method.
 
-## [shelving.core/flush](shelving/impl.clj#L41)
+### [shelving.core/flush](shelving/impl.clj#L41)
  - `(flush conn)`
 
 Flushes (commits) an open shelf.
@@ -21,7 +21,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/close](shelving/impl.clj#L55)
+### [shelving.core/close](shelving/impl.clj#L55)
  - `(close conn)`
 
 Closes an open shelf.
@@ -30,14 +30,14 @@ Shelves may implement this method.
 
 By default just flushes.
 
-## [shelving.core/enumerate-specs](shelving/impl.clj#L185)
+### [shelving.core/enumerate-specs](shelving/impl.clj#L185)
  - `(enumerate-specs conn)`
 
 Enumerates all the known specs.
 
 Shelves may provide alternate implementations of this method.
 
-## [shelving.core/put-spec](shelving/core.clj#L144)
+### [shelving.core/put-spec](shelving/core.clj#L147)
  - `(put-spec conn spec val)`
  - `(put-spec conn spec id val)`
 
@@ -51,7 +51,7 @@ It is an error to specify the ID when inserting into a "value" shelf.
 
 Shelves must implement `#'shelving.impl/put`, which backs this method.
 
-## [shelving.core/get-spec](shelving/core.clj#L172)
+### [shelving.core/get-spec](shelving/core.clj#L175)
  - `(get-spec conn spec record-id)`
  - `(get-spec conn spec record-id not-found)`
 
@@ -61,7 +61,7 @@ Recovers a record from a shelf according to spec and ID, returning the given `no
 
 Shelves must implement `#'shelving.impl/get`, which backs this method.
 
-## [shelving.core/has?](shelving/impl.clj#L108)
+### [shelving.core/has?](shelving/impl.clj#L108)
  - `(has? conn spec record-id)`
 
 Indicates whether a shelf has a record of a spec.

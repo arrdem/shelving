@@ -2,7 +2,7 @@
 
 The searching API and helpers designed to support it.
 
-## [shelving.query/q****](shelving/query.clj#L15)
+## [shelving.query/q****](shelving/query.clj#L16)
  - `(q**** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -24,7 +24,7 @@ Given a query and a connection, builds and returns both the fully analyzed logic
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q**](shelving/query.clj#L83)
+## [shelving.query/q**](shelving/query.clj#L82)
  - `(q** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -35,7 +35,7 @@ Given a query and a connection, builds and returns a sequence of plan "clauses" 
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q*](shelving/query.clj#L100)
+## [shelving.query/q*](shelving/query.clj#L98)
  - `(q* conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -46,7 +46,7 @@ Builds and returns the list form of a function implementing the given datalog qu
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q](shelving/query.clj#L119)
+## [shelving.query/q](shelving/query.clj#L116)
  - `(q conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -65,7 +65,7 @@ Compiles and returns a new function of a connection and `in` parameters which wi
 
 Query compilation is somewhat expensive so it's suggested that queries be compiled once and then parameterized repeatedly.
 
-## [shelving.query/*query-cache*](shelving/query.clj#L161)
+## [shelving.query/*query-cache*](shelving/query.clj#L157)
 
 **UNSTABLE**: This API will probably change in the future
 
@@ -75,7 +75,7 @@ By default LRU caches 128 query implementations.
 
 Queries are indexed by content hash without any attempt to normalize them. Run the same `q!` a bunch of times on related queries and this works. Spin lots of single use queries and you'll bust it.
 
-## [shelving.query/q!](shelving/query.clj#L175)
+## [shelving.query/q!](shelving/query.clj#L170)
  - `(q! conn query & args)`
 
 **UNSTABLE**: This API will probably change in the future

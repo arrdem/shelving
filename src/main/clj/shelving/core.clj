@@ -18,7 +18,8 @@
             [clojure.tools.logging :as log]
             [potemkin :refer [import-vars]]
             [shelving.impl :as imp]
-            [shelving.schema :as schema])
+            [shelving.schema :as schema]
+            shelving.query)
   (:import [me.arrdem.shelving
             MissingRelException
             MissingSpecException
@@ -84,7 +85,9 @@
   id-for-record
   check-schema
   check-schemas check-schemas!
-  spec-rel has-rel? is-alias? resolve-alias])
+  spec-rel has-rel? is-alias? resolve-alias]
+ [shelving.query
+  q q!])
 
 (declare alter-schema)
 

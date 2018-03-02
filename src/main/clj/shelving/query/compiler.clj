@@ -4,7 +4,6 @@
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:require [clojure.core.match :refer [match]]
-            [shelving.core :as sh]
             [shelving.query.planner :as p]))
 
 (defn compile-op
@@ -19,7 +18,6 @@
   It is assumed that the state sequence will be provided as the
   trailing argument ala by `->>`."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [[lvar clause]] 
   (match clause
@@ -28,21 +26,21 @@
                #_(println ~(str "DEBUG " (name lvar) " " (pr-str clause) "]\n        ") ~'state)
                (map (fn [~'e]
                       (assoc ~'state '~lvar ~'e))
-                    (sh/get-rel ~'conn ~rel ~id))))
+                    (shelving.core/get-rel ~'conn ~rel ~id))))
 
     {:type ::p/scan-spec :spec spec}
     `(mapcat (fn [~'state]
                #_(println ~(str "DEBUG " (name lvar) " " (pr-str clause) "]\n        ") ~'state)
                (map (fn [~'e]
                       (assoc ~'state '~lvar ~'e))
-                    (sh/enumerate-spec ~'conn ~spec))))
+                    (shelving.core/enumerate-spec ~'conn ~spec))))
 
     {:type ::p/project :rel rel :left left-var}
     `(mapcat (fn [~'state]
                #_(println ~(str "DEBUG " (name lvar) " " (pr-str clause) "]\n        ") ~'state)
                (map (fn [~'e]
                       (assoc ~'state '~lvar ~'e))
-                    (sh/get-rel ~'conn ~rel (get ~'state '~left-var)))))
+                    (shelving.core/get-rel ~'conn ~rel (get ~'state '~left-var)))))
 
     {:type ::p/intersect :left left-var :right right-var}
     `(keep (fn [~'state]
@@ -58,7 +56,6 @@
   relations and producing a logic variable state structure with the
   given `lvar` legally bound."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [[lvar clauses]]
   `(fn ~lvar [~'states]
@@ -71,7 +68,6 @@
   Given a query plan, compile it to a directly executable stack of
   functions."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [conn {:keys [find in depmap plan]}]
   ;; And now for the tricky bit
@@ -79,14 +75,14 @@
      (let [~@(mapcat (fn [[lvar :as clause]]
                        [lvar (compile-clause clause)])
                      plan)
-           ~'schema (sh/schema ~'conn)]
+           ~'schema (shelving.core/schema ~'conn)]
        (->> [~(->> (for [l in]
-                     `['~l (sh/id-for-record ~'schema ~(get-in depmap [l :spec]) ~l)])
+                     `['~l (shelving.core/id-for-record ~'schema ~(get-in depmap [l :spec]) ~l)])
                    (into {}))]
             ~@(map first plan)
             (map (fn [state#]
                    (->> (for [[lvar# spec#] '~(mapv (fn [lvar]
                                                       [lvar (get-in depmap [lvar :spec])])
                                                     find)]
-                          [lvar# (sh/get-spec ~'conn spec# (get state# lvar#))])
+                          [lvar# (shelving.core/get-spec ~'conn spec# (get state# lvar#))])
                         (into {}))))))))

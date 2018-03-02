@@ -5,7 +5,8 @@
    :added   "0.0.0"}
   (:require [clojure.string :as str]
             [clojure.core.match :refer [match]]
-            [shelving.core :as sh]
+            [shelving.impl :as impl]
+            [shelving.schema :as schema]
             [shelving.query.common :refer [lvar? spec?]]))
 
 (defn- put-spec!
@@ -41,7 +42,6 @@
 (defn- normalize-clauses*
   "find and in clauses have the same spec'd/unspec'd forms, so they normalize the same way."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [k query]
   (let [{:keys [depmap]
@@ -66,7 +66,6 @@
   identifiers, ascribing their specs to the lvars they define in the
   depmap where available."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [query]
   (normalize-clauses* :find query))
@@ -76,7 +75,6 @@
   identifiers, ascribing their specs to the lvars they define in the
   depmap where available."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [query]
   (normalize-clauses* :in query))
@@ -86,7 +84,6 @@
   type may or may not be available. We'll check that all holes have or
   can be filled before we do anything."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [{:keys [where depmap] :as query}]
   (let [depmap (volatile! depmap)
@@ -122,7 +119,6 @@
   "Try to fill in holes in relations using accumulated spec
   information."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [{:keys [depmap where] :as query}]
   (let [where* (mapv (fn [clause]
@@ -138,7 +134,6 @@
 (defn check-holes!
   "Ensure that lvars have been ascribed non-`::hole` specs."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [{:keys [where depmap] :as query}]
   (doseq [[lvar {:keys [spec]}] depmap]
@@ -152,19 +147,18 @@
 (defn check-specs!
   "Ensure that all specs exist in the database schema."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [{:keys [where] :as query} conn]
   (when conn
-    (let [schema (sh/schema conn)]
+    (let [schema (impl/schema conn)]
       (doseq [[lhs [from to :as rel] rhs :as clause] where]
-        (when-not (sh/has-spec? schema from)
+        (when-not (schema/has-spec? schema from)
           (throw (ex-info (format "Clause '%s' makes use of unknown spec '%s'!"
                                   clause from)
                           {:schema schema
                            :spec   from})))
 
-        (when-not (sh/has-spec? schema to)
+        (when-not (schema/has-spec? schema to)
           (throw (ex-info (format "Clause '%s' makes use of unknown spec '%s'!"
                                   clause to)
                           {:schema schema
@@ -177,13 +171,12 @@
 
   Returns the unmodified sequence of clauses, or throws `ExceptionInfo`."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [{:keys [where] :as query} conn]
   (when conn
-    (let [schema (sh/schema conn)]
+    (let [schema (impl/schema conn)]
       (doseq [[lhs rel rhs :as clause] where]
-        (when-not (sh/has-rel? schema rel)
+        (when-not (schema/has-rel? schema rel)
           (throw (ex-info (format "Clause '%s' makes use of unknown relation '%s!"
                                   clause rel)
                           {:schema schema
@@ -202,7 +195,6 @@
   and MAY have a `:dependencies` set, being the set of lvars occurring
   on the rhs of relations to the given lvar."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [clauses]
   (reduce (fn [acc [lhs [from to :as rel] rhs :as clause]]
@@ -218,7 +210,6 @@
   "Recursively annotate lvars which are depended on with their dependees
   until a fixed point is reached."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [depmap]
   (let [d* (reduce (fn [d* [lvar {:keys [dependencies]}]]
@@ -235,7 +226,6 @@
   This prevents the dataflow optimizer from tree-shaking out
   constraints on selected variables."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [dm]
   (let [dm* (reduce (fn [dm* [lvar {:keys [dependencies dependees]}]]
@@ -263,7 +253,6 @@
 (defn dataflow-optimize
   "Tree shake out any relations which are not selected or used."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [{:keys [depmap find in where] :as query}]
   (let [depmap (as-> where %
@@ -296,7 +285,6 @@
 (defn topological-sort-lvars
   "Return a topological sort of the logic variables."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [dependency-map]
   (loop [dependency-map dependency-map,

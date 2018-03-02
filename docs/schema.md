@@ -109,7 +109,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/alter-schema](shelving/core.clj#L190)
+## [shelving.core/alter-schema](shelving/core.clj#L193)
  - `(alter-schema conn f & args)`
 
 Attempts alter the schema of a live connection.

@@ -49,15 +49,6 @@
           :let      [{:keys [doc] :as meta} (meta var)]]
     (t/is doc (format "Var %s is public and doesn't have a docstring!" var))))
 
-(t/deftest test-categories-presence
-  (doseq [ns        (all-ns)
-          [sym var] (ns-publics ns)
-          :when     (and (var? var)
-                         (.contains (str var) "shelving")
-                         (not (.contains (str var) "-test")))
-          :let      [{:keys [categories] :as meta} (meta var)]]
-    (t/is categories (format "Var %s is public and doesn't have a categorization!" var))))
-
 (t/deftest test-added-presence
   (doseq [ns        (all-ns)
           [sym var] (ns-publics ns)

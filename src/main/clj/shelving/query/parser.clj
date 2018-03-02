@@ -6,7 +6,6 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.core.specs.alpha :as cs]
             [clojure.test.check.generators :as gen]
-            [shelving.core :as sh]
             [shelving.query.common :refer [lvar?]]))
 
 (s/def ::lvar
@@ -28,7 +27,7 @@
          :wrapped (s/coll-of ::lvar+spec? :into [])))
 
 (s/def ::full-tuple
-  (s/tuple ::lvar ::sh/rel-id some?))
+  (s/tuple ::lvar :shelving.core/rel-id some?))
 
 (s/def ::terse-tuple
   (s/tuple ::lvar qualified-keyword? some?))

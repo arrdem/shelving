@@ -3,7 +3,8 @@
   {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
-  (:require [shelving.core :as sh]
+  (:require [shelving.impl :as impl]
+            [shelving.schema :as schema]
             [shelving.query.parser :as parser]
             [shelving.query.analyzer :as analyzer]
             [shelving.query.compiler :as compiler]
@@ -22,7 +23,6 @@
   Intended only as a mechanism for inspecting query planning &
   execution."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [conn query]
   {:pre [(s/valid? ::parser/datalog query)]}
@@ -53,7 +53,6 @@
   Intended only as a mechanism for inspecting query planning &
   execution."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"
    :arglists   (:arglists (meta #'q****))}
   [conn query]
@@ -70,8 +69,8 @@
                         (map (fn [[k {:keys [dependencies]
                                       :or   {dependencies #{}}}]]
                                [k dependencies]) %)
-                        (into (sorted-map-by #(as-> (compare (sh/count-spec conn %2)
-                                                             (sh/count-spec conn %1)) $
+                        (into (sorted-map-by #(as-> (compare (impl/count-spec conn %2)
+                                                             (impl/count-spec conn %1)) $
                                                 (if (= $ 0)
                                                   (compare %1 %2) $)))
                               %)
@@ -90,7 +89,6 @@
   Intended only as a mechanism for inspecting query planning &
   execution."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"
    :arglists   (:arglists (meta #'q***))}
   [conn query]
@@ -106,7 +104,6 @@
   Intended only as a mechanism for inspecting query planning &
   execution."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"
    :arglists   (:arglists (meta #'q**))}
   [conn query]
@@ -152,7 +149,6 @@
   Query compilation is somewhat expensive so it's suggested that
   queries be compiled once and then parameterized repeatedly."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [conn query]
   (let [{:keys [fn in] :as query} (q* conn query)]
@@ -160,7 +156,6 @@
 
 (def ^{:dynamic    true
        :stability  :stability/unstable
-       :categories #{::sh/query}
        :added      "0.0.0"}
   *query-cache*
   "A cache of compiled queries.
@@ -178,7 +173,6 @@
 
   Queries are cached to avoid repeated compilation."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [conn query & args]
   (let [query-id (uuid (s/conform ::parser/datalog query))]
