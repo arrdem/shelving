@@ -316,6 +316,10 @@ We can however totally select it if we want to...
 ;; => ({?foo 1, ?bar 2})
 ```
 
+It's important to note that `q` (and `q!`) operate by generating and compiling Clojure code dynamically.
+A (small) compilation cache is provided to ensure that repeated use of `q!` with equivalent queries won't incur avoidable compilation overhead.
+However when developing applications, users should prefer to compile their queries using `q` and re-use the generated query function(s) themselves.
+
 ## APIs
 
 - [Basic API](/docs/basic.md) - The core read and write API exposed to users.
