@@ -3,7 +3,8 @@
   {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
-  (:require [shelving.core :as sh]
+  (:require [shelving.impl :as impl]
+            [shelving.schema :as schema]
             [shelving.query.common :refer [lvar?]]))
 
 (defn build-clause
@@ -14,7 +15,6 @@
   sequence of concrete scan or relational operators specifying how to
   produce the possibility space of the `to` logic variable."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [conn [lhs [from-spec to-spec :as rel] rhs :as clause] from to]
   (let [im1 (gensym "?q_")]
@@ -23,7 +23,7 @@
           [[im1
             {:type ::scan-rel
              :rel  [to-spec from-spec]
-             :id   (-> conn sh/schema (sh/id-for-record to-spec rhs))}]
+             :id   (-> conn impl/schema (schema/id-for-record to-spec rhs))}]
            [to
             {:type  ::intersect
              :left  from
@@ -45,7 +45,7 @@
           [[to
             {:type ::scan-rel
              :rel  [to-spec from-spec]
-             :id   (-> conn sh/schema (sh/id-for-record to-spec rhs))}]]
+             :id   (-> conn impl/schema (schema/id-for-record to-spec rhs))}]]
 
           (and (not from) (lvar? rhs))
           ;; Creating an initial scan on an lvar
@@ -72,7 +72,6 @@
 
   Returns a query plan as a tree of records."
   {:stability  :stability/unstable
-   :categories #{::sh/query}
    :added      "0.0.0"}
   [conn depmap ordering]
   ;; Scans are for producing bindings out of a spec by ID Can scan a whole spec, producing the set
@@ -110,7 +109,7 @@
                    :as   lvar-deps} (get depmap lvar)]
               (when-not in?
                 (let [clauses (mapcat #(get clauses %)
-                                      (sort-by #(sh/count-rel conn %)
+                                      (sort-by #(impl/count-rel conn %)
                                                (keys clauses)))
 
                       binds (concat (repeatedly (if-not clauses 0

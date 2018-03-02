@@ -42,25 +42,25 @@
 (t/deftest test-query-normal-form
   (t/testing "Seq and Map queries should round-trip through the same normal form."
     (t/testing "Can maps self-round-trip?"
-      (tc/quick-check 10
+      (tc/quick-check 100
         (prop/for-all [q (s/gen map-datalog)]
           (let [c (s/conform map-datalog q)]
             (t/is (= c (->> (s/unform map-datalog c) (s/conform map-datalog))))))))
 
     (t/testing "Can maps round-trip through seqs?"
-      (tc/quick-check 10
+      (tc/quick-check 100
         (prop/for-all [q (s/gen map-datalog)]
           (let [c (s/conform map-datalog q)]
             (t/is (= c (->> (s/unform seq-datalog c) (s/conform seq-datalog))))))))
 
     (t/testing "Can seqs self-round-trip?"
-      (tc/quick-check 10
+      (tc/quick-check 100
         (prop/for-all [q (s/gen seq-datalog)]
           (let [c (s/conform seq-datalog q)]
             (t/is (= c (->> (s/unform seq-datalog c) (s/conform seq-datalog))))))))
     
     (t/testing "Can seqs round-trip through maps?"
-      (tc/quick-check 10
+      (tc/quick-check 100
         (prop/for-all [q (s/gen seq-datalog)]
           (let [c (s/conform seq-datalog q)]
             (t/is (= c (->> (s/unform map-datalog c) (s/conform map-datalog))))))))))
