@@ -302,12 +302,15 @@ Our only `::foo` is `1` so,
 
 Perfect!
 Note that `?foo` is not selected by default.
-We can however totally select it if we want to...
+We can however totally select it if we want to.
+Note that above, we had our query terms inline with our clause keywords, and here we've wrapped them up.
+These forms are operationally equivalent.
+We could also use a map instead of the outer vector here to the same effect.
 
 ```clj
 (sh/q *conn
-  '[:find ?foo ?bar
-    :in ?foo
+  '[:find [?foo ?bar]
+    :in [?foo]
     :where [[?e [::example ::bar] ?bar]
             [?e [::example ::foo] ?foo]]])
 ;; => #object[...]
