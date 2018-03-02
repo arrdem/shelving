@@ -278,7 +278,7 @@ What if we wanted to find all the `::bars` which relate through `::example` to a
 
 We can use the `:in` clause to specify a sequence of logic variables (either type inferred or with `:from` blocks) which will be compiled to query parameters.
 At present, only scalar query parameters are supported.
-We'll use the `q` function, which just compiles the query but doesn't execute it yet.
+We'll use the `q` function, which just compiles the query but doesn't execute it yet, and the `:where` clause to enumerate relations between our logic variables.
 
 ```clj
 (sh/q *conn
