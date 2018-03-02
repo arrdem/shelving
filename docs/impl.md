@@ -1,5 +1,7 @@
 # Implementer's API
 
+[Back to the index](/README.md#usage)
+
 Shelving uses a two part API - the [consumer API](/docs/basic.md) is intended to serve the needs of users who want to read and write data.
 The implementer's API contains the raw machinery required to build a shelving store.
 
@@ -25,6 +27,8 @@ At any point in time, a Shelving storage layer is expected to present three dist
    Primarily are consumed as a sequence of "to" UUIDs given a `[from to]` relation and an id.
 
 ## Connection Operations
+
+[Back to the index](/README.md#usage)
 
 No fundamental connection behavior is specified or expected.
 `open` exists to differentiate between a connection's description and an active connection.
@@ -57,11 +61,13 @@ By default just flushes.
 
 ## Schema Operations
 
+[Back to the index](/README.md#usage)
+
 The database schema describes what kinds of values it expects to store.
 Clients MAY NOT write to relations or specs which have not been entered into the schema.
-`#'shelving.core/put-spec`, the intentional write API, has support for automatically manipulating and extending the store's schema.
+[`#'shelving.core/put-spec`](/docs/basic.md#shelvingcoreput-spec), the intentional write API, has support for automatically manipulating and extending the store's schema.
 
-### [shelving.impl/schema](shelving/impl.clj#L148)
+### [shelving.impl/schema](shelving/impl.clj#L146)
  - `(schema conn)`
 
 Returns the schema record for a given connection.
@@ -72,12 +78,12 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/set-schema](shelving/impl.clj#L164)
+### [shelving.impl/set-schema](shelving/impl.clj#L162)
  - `(set-schema conn schema)`
 
 Attempts to alter the live schema of the connection by applying the given transformer function to the current schema state with any additional arguments.
 
-Implementation detail of `#'shelving.core/alter-schema`, which should be universally preferred.
+Implementation detail of [`#'shelving.core/alter-schema`](/docs/basic.md#shelvingcorealter-schema), which should be universally preferred. This method is an unprotected implementation detail not for general use.
 
 Returns the schema record for a given connection.
 
@@ -87,20 +93,22 @@ By default throws `me.arrdem.UnimplementedOperationException`.
 
 ## Spec Operations
 
+[Back to the index](/README.md#usage)
+
 These operations are used to manipulate specs, which approximate single data storage columns in a database.
 Specs may be written to, read from, scanned and counted.
 The counting operation is used to attempt to optimize query implementations.
 
 Deletion of spec entries is not supported.
 
-### [shelving.impl/enumerate-specs](shelving/impl.clj#L185)
+### [shelving.impl/enumerate-specs](shelving/impl.clj#L182)
  - `(enumerate-specs conn)`
 
 Enumerates all the known specs.
 
 Shelves may provide alternate implementations of this method.
 
-### [shelving.impl/enumerate-spec](shelving/impl.clj#L198)
+### [shelving.impl/enumerate-spec](shelving/impl.clj#L195)
  - `(enumerate-spec conn spec)`
 
 Enumerates all the known records of a spec by UUID.
@@ -109,7 +117,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/count-spec](shelving/impl.clj#L212)
+### [shelving.impl/count-spec](shelving/impl.clj#L209)
  - `(count-spec conn spec)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -127,7 +135,7 @@ By default throws `me.arrdem.UnimplementedOperationException`.
 
 The "raw" put operation on values. Inserts a fully decomposed value (tuple) into the designated spec, returning the ID at which it was inserted if an ID was not provided.
 
-Users should universally prefer `#'shelving.core/put`. This method is an unprotected implementation detail not for general use.
+Users should universally prefer [`#'shelving.core/put-spec`](/docs/basic.md#shelvingcoreput-spec). This method is an unprotected implementation detail not for general use.
 
 Note that when inserting into "record" specs, all relations to the updated "record" ID must be invalidated.
 
@@ -135,7 +143,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/get-spec](shelving/impl.clj#L90)
+### [shelving.impl/get-spec](shelving/impl.clj#L89)
  - `(get-spec conn spec record-id)`
  - `(get-spec conn spec record-id not-found)`
 
@@ -143,7 +151,9 @@ Fetches a single tuple, being part of a record, from a shelf by its spec and ID.
 
 Returns the record if it exists, otherwise returning the user-provided `not-found` value, taken to be `nil` by default.
 
-Implementation detail of `#'shelving.core/get`, which should be preferred by users.  Shelves must implement this method.
+Implementation detail of [`#'shelving.core/get-spec`](/docs/basic.md#shelvingcoreget-spec), which should be preferred by users. This method is an unprotected implementation detail not for general use.
+
+Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
@@ -158,19 +168,21 @@ Implementations may provide alternate implementations of this method.
 
 ## Relation operations
 
+[Back to the index](/README.md#usage)
+
 Relations well relate the IDs of values of one spec to the IDs of values of another spec.
 Like the values themselves, the relations can be read from, written to and counted.
 
 Deletion of relations is not supported.
 
-### [shelving.impl/enumerate-rels](shelving/impl.clj#L230)
+### [shelving.impl/enumerate-rels](shelving/impl.clj#L226)
  - `(enumerate-rels conn)`
 
 Enumerates all the known rels by ID (their `[from-spec to-spec]` pair). Includes aliases.
 
 Shelves may provide alternate implementation of this method.
 
-### [shelving.impl/enumerate-rel](shelving/impl.clj#L243)
+### [shelving.impl/enumerate-rel](shelving/impl.clj#L239)
  - `(enumerate-rel conn rel-id)`
 
 Enumerates the `(from-id to-id)` pairs of the given rel(ation).
@@ -179,7 +191,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/count-rel](shelving/impl.clj#L257)
+### [shelving.impl/count-rel](shelving/impl.clj#L253)
  - `(count-rel conn rel-id)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -192,20 +204,20 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/put-rel](shelving/impl.clj#L128)
+### [shelving.impl/put-rel](shelving/impl.clj#L127)
  - `(put-rel conn spec rel-id from-id to-id)`
 
 The "raw" put operation on relations.
 
 Inserts a `[from rel to]` triple into the data store unconditionally.
 
-Users should universally prefer `#'shelving.core/put`. This method is an unprotected implementation detail not for general use.
+Users should universally prefer [`#'shelving.core/put-spec`](/docs/basic.md#shelvingcoreput-spec). This method is an unprotected implementation detail not for general use.
 
 Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/get-rel](shelving/impl.clj#L275)
+### [shelving.impl/get-rel](shelving/impl.clj#L270)
  - `(get-rel conn rel-id spec id)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -214,10 +226,8 @@ Given a rel(ation) and the ID of an record of the from-rel spec, return a seq of
 
 If the given ID does not exist on the left side of the given relation, an empty seq must be produced.
 
-Note that if the rel `[a b]` was created with `#'spec-rel`, the rel `[b a]` also exists and is the complement of mapping from `a`s to `b`s defined by `[a b]`.
+Note that if the rel `[a b]` was created with [`#'shelving.core/spec-rel`](/docs/schema.md#shelvingcorespec-rel), the rel `[b a]` also exists and is the complement of mapping from `a`s to `b`s defined by `[a b]`.
 
-By default uses [`#'enumerate-rel`](#enumerate-rel) to do a full scan of the pairs constituting this relation.
+By default uses [`#'shelving.impl/enumerate-rel`](/docs/impl.md#shelvingimplenumerate-rel) to do a full scan of the pairs constituting this relation.
 
 Shelves may provide more efficient implementations of this method.
-
-

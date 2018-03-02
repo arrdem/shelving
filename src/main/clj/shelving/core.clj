@@ -156,9 +156,8 @@
 
   It is an error to specify the ID when inserting into a \"value\" shelf.
 
-  Shelves must implement `#'shelving.impl/put`, which backs this method."
-  {:categories #{::basic}
-   :stability  :stability/stable
+  Shelves must implement `#'shelving.impl/put-spec`, which backs this method."
+  {:stability  :stability/stable
    :added      "0.0.0"}
   ([conn spec val]
    (s/assert spec val)
@@ -179,9 +178,8 @@
   the given `not-found` sentinel if no such record exists, otherwise
   returning `nil`.
 
-  Shelves must implement `#'shelving.impl/get`, which backs this method."
-  {:categories #{::basic}
-   :stability  :stability/stable
+  Shelves must implement `#'shelving.impl/get-spec`, which backs this method."
+  {:stability  :stability/stable
    :added      "0.0.0"}
   ([conn spec record-id]
    {:post [(s/valid? spec %)]}
@@ -211,8 +209,7 @@
   Throws `me.arrdem.shelving.SchemaMigrationexception` without
   impacting the connection or its backing store if schema
   incompatibilities are detected."
-  {:categories #{::basic}
-   :stability  :stability/stable
+  {:stability  :stability/stable
    :added      "0.0.0"}
   [conn f & args]
   (let [schema                  (schema conn)

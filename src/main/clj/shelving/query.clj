@@ -163,7 +163,7 @@
   By default LRU caches 128 query implementations.
 
   Queries are indexed by content hash without any attempt to normalize
-  them. Run the same `q!` a bunch of times on related queries and this
+  them. Run the same `#'q!` a bunch of times on related queries and this
   works. Spin lots of single use queries and you'll bust it."
   (atom (cache/lru-cache-factory {} :threshold 128)))
 

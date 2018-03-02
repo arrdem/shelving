@@ -1,12 +1,12 @@
 # Schema API
 
-[back to the index](/README.md#usage)
+[Back to the index](/README.md#usage)
 
 Shelving leverages `clojure.spec(.alpha)` to achieve data validation and describe the structure of
 data. Schemas are a tool for talking about the set of specs which a shelf expects to be able to
 round-trip.
 
-A Shelving Schema consists of all the specs for data which may be stored, and the
+A Shelving schema consists of all the specs for data which may be stored, and the
 [rel(ation)s](/doc/rel.md) which connect them.
 
 Shelves are expected to persist and check their schemas across close and re-open.
@@ -19,109 +19,63 @@ identifiers which may be updated. Records can be inserted, updated and removed.
 In keeping with Clojure's focus on data, Shelving also supports content or <span name="values">**"value"**</span>
 storage of immutable objects. Values can only be inserted.
 
-## [shelving.core/enumerate-rels](shelving/impl.clj#L230)
- - `(enumerate-rels conn)`
+## [shelving.core/empty-schema](shelving/schema.clj#L48)
 
-Enumerates all the known rels by ID (their `[from-spec to-spec]` pair). Includes aliases.
+The empty Shelving schema.
 
-Shelves may provide alternate implementation of this method.
+Should be used as the basis for all user-defined schemas.
 
-## [shelving.core/put-rel](shelving/impl.clj#L128)
- - `(put-rel conn spec rel-id from-id to-id)`
+Contains no specs, no rel(ation)s, and allows the automatic creation of neither specs nor rels.
 
-The "raw" put operation on relations.
+## [shelving.core/value-spec](shelving/schema.clj#L108)
+ - `(value-spec schema spec & {:as opts})`
 
-Inserts a `[from rel to]` triple into the data store unconditionally.
+Enters a new spec and its subspecs into the schema, returning a new schema. The given spec and its subspecs are all entered as "value" specs which have value identity and cannot be updated. Rel(ations) between all inserted specs and their subspecs are automatically added.
 
-Users should universally prefer `#'shelving.core/put`. This method is an unprotected implementation detail not for general use.
+Values are addressed by a content hash derived ID, are unique and cannot be deleted or updated.
 
-Shelves must implement this method.
+Values may be related to other values via schema rel(ation)s. Records may relate to values, but values cannot relate to records except through reverse lookup on a record to value relation.
 
-By default throws `me.arrdem.UnimplementedOperationException`.
+## [shelving.core/record-spec](shelving/schema.clj#L149)
+ - `(record-spec schema spec & {:as opts})`
 
-## [shelving.core/get-rel](shelving/impl.clj#L275)
- - `(get-rel conn rel-id spec id)`
+Enters a new spec and its subspecs spec into a schema, returning a new schema. The given spec is inserted as "record" spec with update-in-place capabilities, its subspecs are inserted as "value" specs.
 
-**UNSTABLE**: This API will probably change in the future
+Records have traditional place semantics and are identified by randomly generated IDs, rather than the structural semantics ascribed to values.
 
-Given a rel(ation) and the ID of an record of the from-rel spec, return a seq of the IDs of records it relates to. If the given ID does not exist on the left side of the given relation, an empty seq must be produced.
+## [shelving.core/automatic-specs](shelving/schema.clj#L175)
+ - `(automatic-specs schema)`
+ - `(automatic-specs schema bool)`
 
-If the given ID does not exist on the left side of the given relation, an empty seq must be produced.
+Function of a schema, returning a new schema which allows for the automatic addition of specs. Specs added automatically will always be "values".
 
-Note that if the rel `[a b]` was created with `#'spec-rel`, the rel `[b a]` also exists and is the complement of mapping from `a`s to `b`s defined by `[a b]`.
+## [shelving.core/automatic-specs?](shelving/schema.clj#L188)
+ - `(automatic-specs? {:keys [automatic-specs?]})`
 
-By default uses [`#'enumerate-rel`](#enumerate-rel) to do a full scan of the pairs constituting this relation.
+Function of a schema, indicating whether it allows for the automatic creation of "value" specs.
 
-Shelves may provide more efficient implementations of this method.
+## [shelving.core/spec-rel](shelving/schema.clj#L267)
+ - `(spec-rel schema [from-spec to-spec :as rel-id])`
 
-## [shelving.core/enumerate-rel](shelving/impl.clj#L243)
- - `(enumerate-rel conn rel-id)`
+Enters a rel(ation) into a schema, returning a new schema which will maintain that rel.
 
-Enumerates the `(from-id to-id)` pairs of the given rel(ation).
+rels are identified uniquely by a pair of specs, stating that there exists a unidirectional relation from values conforming to `from-spec` to values conforming to `to-spec`. This relation has an inverse, which maps values of `to-spec` back to the values of `from-spec` which projected to them.
 
-Shelves must implement this method.
+The rel is determined by the `to-fn` which projects values conforming to the `from-spec` to values conforming to `to-spec`. `to-fn` MUST be a pure function.
 
-By default throws `me.arrdem.UnimplementedOperationException`.
+When inserting with indices, all `to-spec` instances will be inserted into their corresponding tables.
 
-## [shelving.core/count-rel](shelving/impl.clj#L257)
- - `(count-rel conn rel-id)`
+At insertion time, the `to-spec` must exist as a supported shelf.
 
-**UNSTABLE**: This API will probably change in the future
+The `to-spec` MAY NEVER name a "record" shelf. `to-spec` must be a "value" shelf.
 
-Returns an upper bound on the cardinality of a given relation.
+## [shelving.core/automatic-rels](shelving/schema.clj#L335)
+ - `(automatic-rels schema)`
+ - `(automatic-rels schema bool)`
 
-The bound should be as tight as possible if not precise. Implementations of this method should be near constant time and should not require realizing the rel in question.
+Function of a schema, returning a new schema which allows for the automatic addition of relations. Relations must be between known specs, and may not relate to records.
 
-Shelves must implement this method.
+## [shelving.core/automatic-rels?](shelving/schema.clj#L348)
+ - `(automatic-rels? {:keys [automatic-rels?]})`
 
-By default throws `me.arrdem.UnimplementedOperationException`.
-
-## [shelving.core/enumerate-spec](shelving/impl.clj#L198)
- - `(enumerate-spec conn spec)`
-
-Enumerates all the known records of a spec by UUID.
-
-Shelves must implement this method.
-
-By default throws `me.arrdem.UnimplementedOperationException`.
-
-## [shelving.core/count-spec](shelving/impl.clj#L212)
- - `(count-spec conn spec)`
-
-**UNSTABLE**: This API will probably change in the future
-
-Returns an upper bound on the cardinality of a given spec.
-
-The bound should be as tight as possible if not precise. Implementations of this method should be near constant time and should not require realizing the spec in question.
-
-Shelves must implement this method.
-
-By default throws `me.arrdem.UnimplementedOperationException`.
-
-## [shelving.core/schema](shelving/impl.clj#L148)
- - `(schema conn)`
-
-Returns the schema record for a given connection.
-
-Schemas are fixed when the connection is opened.
-
-Shelves must implement this method.
-
-By default throws `me.arrdem.UnimplementedOperationException`.
-
-## [shelving.core/alter-schema](shelving/core.clj#L193)
- - `(alter-schema conn f & args)`
-
-Attempts alter the schema of a live connection.
-
-I CANNOT EMPHASIZE ENOUGH HOW DANGEROUS THIS COULD BE.
-
-1. Gets the live schema from the connection 2. Attempts to apply the schema altering function 3. Attempts to validate that the produced new schema is compatible 4. Irreversibly writes the new schema to the store
-
-Applies the given transformer function to the current live schema and the given arguments. Checks that the resulting schema is compatible with the existing schema (eg. strictly additive), sending the schema change to the connection only if compatibility checking succeeds.
-
-Returns the new schema.
-
-Throws `me.arrdem.shelving.SchemaMigrationexception` without impacting the connection or its backing store if schema incompatibilities are detected.
-
-
+Predicate indicating whether the schema supports automatic relations.

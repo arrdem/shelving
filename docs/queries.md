@@ -73,18 +73,18 @@ A cache of compiled queries.
 
 By default LRU caches 128 query implementations.
 
-Queries are indexed by content hash without any attempt to normalize them. Run the same `q!` a bunch of times on related queries and this works. Spin lots of single use queries and you'll bust it.
+Queries are indexed by content hash without any attempt to normalize them. Run the same [`#'shelving.query/q!`](/docs/queries.md#shelvingqueryq!) a bunch of times on related queries and this works. Spin lots of single use queries and you'll bust it.
 
 ## [shelving.query/q!](shelving/query.clj#L170)
  - `(q! conn query & args)`
 
 **UNSTABLE**: This API will probably change in the future
 
-Same as `#'q` but directly accepts arguments and executes the compiled query.
+Same as [`#'shelving.query/q`](/docs/queries.md#shelvingqueryq) but directly accepts arguments and executes the compiled query.
 
 Queries are cached to avoid repeated compilation.
 
-## [shelving.core/count-spec](shelving/impl.clj#L212)
+## [shelving.core/count-spec](shelving/impl.clj#L209)
  - `(count-spec conn spec)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -97,7 +97,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/count-rel](shelving/impl.clj#L257)
+## [shelving.core/count-rel](shelving/impl.clj#L253)
  - `(count-rel conn rel-id)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -109,5 +109,3 @@ The bound should be as tight as possible if not precise. Implementations of this
 Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
-
-

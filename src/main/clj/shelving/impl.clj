@@ -68,15 +68,14 @@
   (flush t))
 
 (defmulti put-spec
-  "The \"raw\" put operation on values. Inserts a fully decomposed
-  value (tuple) into the designated spec, returning the ID at which it
-  was inserted if an ID was not provided.
+  "The \"raw\" put operation on values. Inserts a fully decomposed value (tuple) into the designated
+  spec, returning the ID at which it was inserted if an ID was not provided.
 
-  Users should universally prefer `#'shelving.core/put`. This method
-  is an unprotected implementation detail not for general use.
+  Users should universally prefer `#'shelving.core/put-spec`. This method is an unprotected
+  implementation detail not for general use.
 
-  Note that when inserting into \"record\" specs, all relations to the
-  updated \"record\" ID must be invalidated.
+  Note that when inserting into \"record\" specs, all relations to the updated \"record\" ID must be
+  invalidated.
 
   Shelves must implement this method.
 
@@ -90,11 +89,12 @@
 (defmulti get-spec
   "Fetches a single tuple, being part of a record, from a shelf by its spec and ID.
 
-  Returns the record if it exists, otherwise returning the
-  user-provided `not-found` value, taken to be `nil` by default.
+  Returns the record if it exists, otherwise returning the user-provided `not-found` value, taken to
+  be `nil` by default.
 
-  Implementation detail of `#'shelving.core/get`, which should be preferred by users.
-  
+  Implementation detail of `#'shelving.core/get-spec`, which should be preferred by users. This
+  method is an unprotected implementation detail not for general use.
+
   Shelves must implement this method.
 
   By default throws `me.arrdem.UnimplementedOperationException`."
@@ -108,11 +108,10 @@
 (defmulti has?
   "Indicates whether a shelf has a record of a spec.
 
-  Returns `true` if and only if the shelf contains a record if the
-  given spec and ID.  Otherwise must return `false`.
+  Returns `true` if and only if the shelf contains a record if the given spec and ID.  Otherwise
+  must return `false`.
 
-  Implementations may provide alternate implementations of this
-  method."
+  Implementations may provide alternate implementations of this method."
   {:categories #{:shelving.core/impl :shelving.core/basic}
    :stability  :stability/stable
    :added      "0.0.0"
@@ -128,11 +127,10 @@
 (defmulti put-rel
   "The \"raw\" put operation on relations.
 
-  Inserts a `[from rel to]` triple into the data store
-  unconditionally.
+  Inserts a `[from rel to]` triple into the data store unconditionally.
 
-  Users should universally prefer `#'shelving.core/put`. This method
-  is an unprotected implementation detail not for general use.
+  Users should universally prefer `#'shelving.core/put-spec`. This method is an unprotected
+  implementation detail not for general use.
 
   Shelves must implement this method.
 
@@ -162,12 +160,11 @@
 (required! schema)
 
 (defmulti set-schema
-  "Attempts to alter the live schema of the connection by applying the
-  given transformer function to the current schema state with any
-  additional arguments.
+  "Attempts to alter the live schema of the connection by applying the given transformer function to
+  the current schema state with any additional arguments.
 
-  Implementation detail of `#'shelving.core/alter-schema`, which
-  should be universally preferred.
+  Implementation detail of `#'shelving.core/alter-schema`, which should be universally
+  preferred. This method is an unprotected implementation detail not for general use.
 
   Returns the schema record for a given connection.
 
@@ -212,9 +209,8 @@
 (defmulti count-spec
   "Returns an upper bound on the cardinality of a given spec.
 
-  The bound should be as tight as possible if not
-  precise. Implementations of this method should be near constant time
-  and should not require realizing the spec in question.
+  The bound should be as tight as possible if not precise. Implementations of this method should be
+  near constant time and should not require realizing the spec in question.
 
   Shelves must implement this method.
 
@@ -257,9 +253,8 @@
 (defmulti count-rel
   "Returns an upper bound on the cardinality of a given relation.
 
-  The bound should be as tight as possible if not
-  precise. Implementations of this method should be near constant time
-  and should not require realizing the rel in question.
+  The bound should be as tight as possible if not precise. Implementations of this method should be
+  near constant time and should not require realizing the rel in question.
 
   Shelves must implement this method.
 
@@ -274,19 +269,17 @@
 
 (defmulti get-rel
   "Given a rel(ation) and the ID of an record of the from-rel spec,
-  return a seq of the IDs of records it relates to. If the given ID
-  does not exist on the left side of the given relation, an empty seq
-  must be produced.
+  return a seq of the IDs of records it relates to. If the given ID does not exist on the left side
+  of the given relation, an empty seq must be produced.
 
-  If the given ID does not exist on the left side of the given
-  relation, an empty seq must be produced.
+  If the given ID does not exist on the left side of the given relation, an empty seq must be
+  produced.
 
-  Note that if the rel `[a b]` was created with `#'spec-rel`, the rel
-  `[b a]` also exists and is the complement of mapping from `a`s to
-  `b`s defined by `[a b]`.
+  Note that if the rel `[a b]` was created with `#'shelving.core/spec-rel`, the rel `[b a]` also
+  exists and is the complement of mapping from `a`s to `b`s defined by `[a b]`.
 
-  By default uses [`#'enumerate-rel`](#enumerate-rel) to do a full scan
-  of the pairs constituting this relation.
+  By default uses `#'shelving.impl/enumerate-rel` to do a full scan of the pairs constituting this
+  relation.
 
   Shelves may provide more efficient implementations of this method."
   {:categories #{:shelving.core/impl :shelving.core/rel}
