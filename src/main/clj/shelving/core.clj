@@ -117,6 +117,9 @@
               (ensure-spec! conn to)
               (alter-schema conn spec-rel rel)))))
 
+;; FIXME (arrdem 2018-03-02):
+;;   This recursively inserts sub-structures, but still inserts all structures fully formed.
+;;   It should be able to insert only "denormalized" structures.
 (defn- put*
   "Recursively traverse the given value, decomposing it into its
   constituent parts via a depth-first traversal, writing those parts
