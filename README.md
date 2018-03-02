@@ -284,8 +284,8 @@ We'll use the `q` function, which just compiles the query but doesn't execute it
 (sh/q *conn
   '[:find ?bar
     :in ?foo
-    :where [[?e [::example ::bar] ?bar]
-            [?e [::example ::foo] ?foo]]])
+    :where [?e [::example ::bar] ?bar]
+           [?e [::example ::foo] ?foo]])
 ;; => #object[...]
 ```
 
