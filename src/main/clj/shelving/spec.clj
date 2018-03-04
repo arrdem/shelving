@@ -7,9 +7,6 @@
             [clojure.core.match :refer [match]]
             [detritus.update :refer [fix]]))
 
-;; Not a require to avoid a cyclic dependency
-(alias 'sh 'shelving.core)
-
 (defn keys-as-map
   "Implementation detail of `#'walk-with-spec`.
 
@@ -18,8 +15,7 @@
 
   Imposes the restriction that there be PRECISELY ONE spec for any
   given key. Will throw otherwise."
-  {:categories #{::sh/spec}
-   :stability  :stability/unstable
+  {:stability  :stability/unstable
    :added      "0.0.0"}
   [keys-form]
   (let [[_keys & {:keys [req req-un opt opt-un] :as opts}] keys-form]
@@ -30,8 +26,7 @@
 (defn pred->preds
   "Given a `s/describe*` or 'pred' structure, return its component
   preds (keyword identifiers and predicate forms)."
-  {:categories #{::sh/spec}
-   :stability  :stability/unstable
+  {:stability  :stability/unstable
    :added      "0.0.0"}
   [s]
   (match s
@@ -51,8 +46,7 @@
   "Given a keyword naming a spec, return the depth-first .
 
   Does not recur across spec keywords."
-  {:categories #{::sh/spec}
-   :stability  :stability/unstable
+  {:stability  :stability/unstable
    :added      "0.0.0"}
   [s]
   (let [s* (or (s/get-spec s) ::s/unknown)]
@@ -69,8 +63,7 @@
   Throws if a `::s/unknown` spec is encountered.
 
   Named for `#'file-seq`."
-  {:categories #{::sh/spec}
-   :stability  :stability/unstable
+  {:stability  :stability/unstable
    :added      "0.0.0"}
   [s & specs]
   (loop [[s & specs* :as specs] (cons s specs)

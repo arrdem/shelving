@@ -13,11 +13,19 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.tools.logging :as log]
             [hasch.core :refer [uuid]]
+            [hasch.benc :refer [magics PHashCoercion -coerce
+                                digest coerce-seq xor-hashes encode-safe]]
+            [hasch.platform :refer [encode]]
             [shelving.spec :as ss]
             [shelving.spec.walk :as s.w])
   (:import java.nio.ByteBuffer
            java.util.UUID
-           me.arrdem.UnimplementedOperationException))
+           me.arrdem.UnimplementedOperationException
+           me.arrdem.shelving.RecordIdentifier)
+  (:import java.util.UUID
+           clojure.lang.Keyword
+           java.io.Writer
+           me.arrdem.shelving.RecordIdentifier))
 
 ;; ID tools
 ;;--------------------------------------------------------------------------------------------------
@@ -194,6 +202,30 @@
   [{:keys [automatic-specs?]}]
   (or automatic-specs? false))
 
+;; Record identifiers
+(defmethod print-method RecordIdentifier [^RecordIdentifier id ^java.io.Writer w]
+  (.write w "#shelving/id [")
+  (print-method (.spec id) w)
+  (.write w " ")
+  (print-method (.id id) w)
+  (.write w "]"))
+
+(extend-protocol PHashCoercion
+  RecordIdentifier
+  (-coerce [^RecordIdentifier this md-create-fn write-handlers]
+    (encode (:binary magics)
+            (coerce-seq (.seq this) md-create-fn write-handlers))))
+
+(defn read-id [[^Keyword spec ^UUID id]]
+  (RecordIdentifier. spec id))
+
+(defn id? [o]
+  (instance? RecordIdentifier o))
+
+(defn ->id [^Keyword spec ^UUID id]
+  (RecordIdentifier. spec id))
+
+
 (defn id-for-record
   "Returns the `val`'s identifying UUID according to the spec's schema entry."
   {:categories #{::schema}
@@ -207,7 +239,7 @@
                        (clojure.core/get spec)
                        (clojure.core/get :record?))
                  random-uuid uuid)]
-    (key-fn val)))
+    (->id spec (key-fn val))))
 
 (defn check-schemas
   "Helper for use in checking compatibility between database persistable specs.
@@ -382,25 +414,3 @@
                    (keys rels))
            set seq))
       seq))
-
-(defn decompose
-  "Given a schema, a spec in the schema, a record ID and the record as a
-  value, decompose the record into its direct descendants and relations
-  thereto."
-  {:categories #{::schema}
-   :stability  :stability/stable
-   :added      "0.0.0"}
-  [schema spec id val]
-  (let [acc! (volatile! [])]
-    (binding [s.w/*walk-through-aliases* nil
-              s.w/*walk-through-multis*  nil]
-      (s.w/postwalk-with-spec
-       (fn [subspec subval]
-         (when (and (qualified-keyword? subspec)
-                    (not= spec subspec))
-           (let [id* (id-for-record schema subspec subval)]
-             (vswap! acc! conj [:record subspec id* subval])
-             (vswap! acc! conj [:rel [spec subspec] id id*])))
-         subval)
-       spec val)
-      @acc!)))

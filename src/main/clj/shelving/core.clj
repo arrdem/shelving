@@ -17,7 +17,7 @@
             [clojure.spec.alpha :as s]
             [clojure.tools.logging :as log]
             [potemkin :refer [import-vars]]
-            [shelving.impl :as imp]
+            [shelving.impl :as impl]
             [shelving.schema :as schema]
             shelving.query)
   (:import [me.arrdem.shelving
@@ -36,16 +36,12 @@
 (s/def :shelving.core.spec/record?
   boolean?)
 
-(s/def :shelving.core.spec/id-fn
-  ifn?)
-
 (s/def :shelving.core.spec/rels
   (s/coll-of #(s/valid? ::rel-id %)))
 
 (s/def ::spec
   (s/keys :req-un [:shelving.core.spec/type
                    :shelving.core.spec/record?
-                   :shelving.core.spec/id-fn
                    :shelving.core.spec/rels]))
 
 (s/def :shelving.core.schema/type #{::schema})
@@ -85,7 +81,8 @@
   id-for-record
   check-schema
   check-schemas check-schemas!
-  spec-rel has-rel? is-alias? resolve-alias]
+  spec-rel has-rel? is-alias? resolve-alias
+  id? ->id]
  [shelving.query
   q q!])
 
@@ -136,14 +133,14 @@
                          (is-value? schema* spec*))
                   ;; skip the write
                   (recur queue* dirty?)
-                  (do (imp/put-spec conn spec* id* val*)
+                  (do (impl/put-spec conn spec* id* val*)
                       (recur (into queue*
-                                   (schema/decompose schema* spec* id* val*))
+                                   (impl/decompose schema* spec* id* val*))
                              (conj dirty? id*)))))
 
               [:rel rel-id from-id to-id]
               (do (ensure-rel! conn rel-id)
-                  (imp/put-rel conn rel-id from-id to-id)
+                  (impl/put-rel conn rel-id from-id to-id)
                   (recur queue* dirty?))))))
   id)
 
@@ -164,7 +161,7 @@
    :added      "0.0.0"}
   ([conn spec val]
    (s/assert spec val)
-   (let [id (id-for-record (imp/schema conn) spec val)]
+   (let [id (id-for-record (impl/schema conn) spec val)]
      (put* conn spec id val)))
   ([conn spec id val]
    (s/assert spec val)
@@ -229,5 +226,5 @@
                 "Failed to validate the migrated schema!" problems))
         ;; FIXME: this is SUPER FUCKING DANGEROUS. Who knows what the storage layer is gonna do. If
         ;; this throws, we're kinda shit out of luck here.
-        (do (imp/set-schema conn schema*)
+        (do (impl/set-schema conn schema*)
             schema*)))))

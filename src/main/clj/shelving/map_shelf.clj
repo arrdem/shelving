@@ -97,7 +97,7 @@
   "Implementation detail.
   Backs `#'sh/put`, providing the actual recursive write logic."
   [state schema spec record-id record]
-  (assert (uuid? record-id))
+  (assert (sh/id? record-id))
   (assert (sh/has-spec? schema spec))
   (assert (s/valid? spec record))
   (cond-> state
