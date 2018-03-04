@@ -5,3 +5,5 @@
 /**/.lein*
 checkouts
 target
+.idea
+/**/*.iml
