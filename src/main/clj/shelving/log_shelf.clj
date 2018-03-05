@@ -97,7 +97,6 @@
 (defmethod imp/count-spec ::shelf [conn spec]
   (count (imp/enumerate-spec conn spec)))
 
-
 (defn- enumerate-rel* [[t & t* :as tuples] from-spec fr? to-spec tr? invalidated]
   (if-not tuples nil
           (let [tv? (if tr? (complement invalidated) (constantly true))
@@ -118,7 +117,7 @@
               (if fr?
                 (recur t* from-spec fr? to-spec tr? (conj invalidated some-id))
                 (recur t* from-spec fr? to-spec tr? invalidated))
-              
+
               :else
               (recur t* from-spec fr? to-spec tr? invalidated)))))
 
@@ -139,7 +138,7 @@
           (let [valid? (complement invalidated)]
             (match t
               (:or [(id :guard valid?)    [from-spec to-spec] (to-id :guard valid?)]
-                   [(to-id :guard valid?) [to-spec from-spec] (id :guard valid?)]) 
+                   [(to-id :guard valid?) [to-spec from-spec] (id :guard valid?)])
               (cons to-id (lazy-seq (get-rel* rel id ts* from-record? to-record? invalidated)))
 
               [from-spec id _]

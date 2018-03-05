@@ -97,9 +97,6 @@
   "Implementation detail.
   Backs `#'sh/put`, providing the actual recursive write logic."
   [state schema spec record-id record]
-  (assert (sh/id? record-id))
-  (assert (sh/has-spec? schema spec))
-  (assert (s/valid? spec record))
   (cond-> state
     ;; FIXME (arrdem 2018-02-25):
     ;;   can skip invalidation when we're inserting a new record
@@ -108,7 +105,7 @@
 
 (defmethod impl/put-spec ::shelf
   [{:keys [::state flush-after-write] :as conn} spec id val]
-  (swap! state put* (sh/schema conn) spec id val) 
+  (swap! state put* (sh/schema conn) spec id val)
   (when flush-after-write
     (sh/flush conn))
   id)

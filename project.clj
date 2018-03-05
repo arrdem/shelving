@@ -3,7 +3,9 @@
   :url "https://github.com/arrdem/shelving"
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.9.0"]
+
+  :exclusions [org.clojure/clojure]
+  :dependencies [[me.arrdem/clojure "1.10.0-SNAPSHOT"]
                  [org.clojure/spec.alpha "0.1.143"]
                  [io.replikativ/hasch "0.3.4"
                   :exclusions [com.cemerick/austin]]

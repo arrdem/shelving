@@ -27,30 +27,6 @@
            java.io.Writer
            me.arrdem.shelving.RecordIdentifier))
 
-;; ID tools
-;;--------------------------------------------------------------------------------------------------
-(defn random-uuid
-  "Returns a random UUID."
-  {:categories #{::util}
-   :added      "0.0.0"
-   :stability  :stability/stable}
-  [_]
-  (UUID/randomUUID))
-
-(defn digest->uuid
-  "Takes the first 16b of a `byte[]` as a 1228bi UUID.
-
-  An `IndexOutOfBoundsException` will probably be thrown if the
-  `byte[]` is too small."
-  {:categories #{::util}
-   :added      "0.0.0"
-   :stability  :stability/stable}
-  [digest]
-  (let [buff (ByteBuffer/wrap digest)]
-    (UUID.
-     (.getLong buff 0)
-     (.getLong buff 1))))
-
 ;; Intentional interface for schemas
 ;;--------------------------------------------------------------------------------------------------
 (def ^{:doc "The empty Shelving schema.
@@ -140,7 +116,7 @@
   (when (not-empty opts)
     (log/warn "value-spec got ignored opts" opts))
   (reduce #(cond-> %1
-             (not (has-spec? %1 %2))       (value-spec %2) 
+             (not (has-spec? %1 %2))       (value-spec %2)
              (not (has-rel? %1 [spec %2])) (spec-rel [spec %2]))
           (shelf-spec* schema spec false)
           (filter qualified-keyword?
@@ -202,29 +178,58 @@
   [{:keys [automatic-specs?]}]
   (or automatic-specs? false))
 
-;; Record identifiers
-(defmethod print-method RecordIdentifier [^RecordIdentifier id ^java.io.Writer w]
-  (.write w "#shelving/id [")
-  (print-method (.spec id) w)
-  (.write w " ")
-  (print-method (.id id) w)
-  (.write w "]"))
+;; Working with record IDs
+(defmethod print-dup RecordIdentifier [^RecordIdentifier id ^java.io.Writer w]
+  (.write w (str "#=" `(RecordIdentifier. ~(.spec id) ~(.id id)))))
 
 (extend-protocol PHashCoercion
   RecordIdentifier
   (-coerce [^RecordIdentifier this md-create-fn write-handlers]
     (encode (:binary magics)
-            (coerce-seq (.seq this) md-create-fn write-handlers))))
+            (coerce-seq [(.getTag this) (.getForm this)]
+                        md-create-fn write-handlers))))
 
-(defn read-id [[^Keyword spec ^UUID id]]
+(defn read-id
+  "Helper used for reading Shelving ID tagged reader literals."
+  {:added     "0.0.0"
+   :stability :stability/unstable}
+  [[^Keyword spec ^UUID id]]
   (RecordIdentifier. spec id))
 
-(defn id? [o]
+(defn id?
+  "Predicate. True only for Shelving IDs."
+  {:added     "0.0.0"
+   :stability :stability/unstable}
+  [o]
   (instance? RecordIdentifier o))
 
-(defn ->id [^Keyword spec ^UUID id]
+(defn ->id
+  "Helper. Constructor for Shelving IDs."
+  {:added     "0.0.0"
+   :stability :stability/unstable}
+  [^Keyword spec ^UUID id]
   (RecordIdentifier. spec id))
 
+(defn- random-uuid
+  [_]
+  (UUID/randomUUID))
+
+(defn- digest->uuid
+  [digest]
+  (let [buff (ByteBuffer/wrap digest)]
+    (UUID.
+     (.getLong buff 0)
+     (.getLong buff 1))))
+
+(defn as-id
+  "Helper. Converts a pair, being a spec keyword and either a UUID or a
+  Shelving ID to an ID in the given spec."
+  {:added     "0.0.0"
+   :stability :stability/unstable}
+  [spec id]
+  (if (id? id)
+    (do (assert (= (.spec ^RecordIdentifier id) spec)) id)
+    (->id spec id)))
 
 (defn id-for-record
   "Returns the `val`'s identifying UUID according to the spec's schema entry."

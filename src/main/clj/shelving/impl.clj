@@ -305,20 +305,23 @@
   [schema spec id val]
   (let [acc! (volatile! [])
         ids (volatile! [])]
-    (log/info id val)
+    (log/debug id (pr-str val))
     (binding [s.w/*walk-through-aliases* nil
               s.w/*walk-through-multis*  nil]
-      (s.w/walk-with-spec
-       (fn [subspec subval]
-         (vswap! ids conj (schema/id-for-record schema subspec subval))
-         subval)
-       (fn [subspec subval]
-         (let [id* (last @ids)]
-           (vswap! ids pop)
-           (when (and (qualified-keyword? subspec)
-                      (not= spec subspec))
-             (vswap! acc! conj [:record subspec id* subval])
-             (vswap! acc! conj [:rel [spec subspec] id id*]))
-           id*))
-       spec val)
-      @acc!)))
+      (let [val* (s.w/walk-with-spec
+                  (fn [subspec subval]
+                    (vswap! ids conj
+                            (if (= subspec spec)
+                              (schema/as-id spec id)
+                              (schema/id-for-record schema subspec subval)))
+                    subval)
+                  (fn [subspec subval]
+                    (let [id* (last @ids)]
+                      (vswap! ids pop)
+                      (when (qualified-keyword? subspec)
+                        (vswap! acc! conj [:record* subspec id* subval])
+                        (when (not= spec subspec)
+                          (vswap! acc! conj [:rel [spec subspec] id id*])))
+                      id*))
+                  spec val)]
+        @acc!))))

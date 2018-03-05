@@ -60,7 +60,7 @@ Default is `nil`, meaning infinitely many."}
      ~else))
 
 (defmethod walk-with-spec* ::alias [spec alias obj before after]
-  {:pre [(qualified-keyword? alias)]} 
+  {:pre [(qualified-keyword? alias)]}
   (as-> obj %
     (before spec %)
     (do (s/assert spec %) %)
@@ -78,7 +78,7 @@ Default is `nil`, meaning infinitely many."}
 (defmethod walk-with-spec* `s/multi-spec [spec [_ mm k] obj before after]
   (as-> obj %
     (before spec %)
-    (do (s/assert spec %) %) 
+    (do (s/assert spec %) %)
     (let [spec* ((find-var mm) %)]
       (with-counter *walk-through-multis*
         (walk-with-spec before after spec* %) %))

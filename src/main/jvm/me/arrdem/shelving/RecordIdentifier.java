@@ -6,7 +6,7 @@ import java.util.Objects;
 import java.util.UUID;
 import static clojure.lang.RT.cons;
 
-public class RecordIdentifier implements clojure.lang.Seqable {
+public class RecordIdentifier implements ITaggedLiteral {
     public final UUID id;
     public final Keyword spec;
 
@@ -33,8 +33,11 @@ public class RecordIdentifier implements clojure.lang.Seqable {
         return String.format("#shelving/id [%s %s]", this.spec, this.id);
     }
 
-    @Override
-    public ISeq seq() {
-        return cons(this.spec, cons(this.id, null));
+    public Symbol getTag() {
+        return Symbol.intern("shelving", "id");
+    }
+
+    public Object getForm() {
+        return PersistentVector.create(this.spec, this.id);
     }
 }
