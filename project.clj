@@ -48,12 +48,12 @@
                         (format "%s.%d-%s-SNAPSHOT" prefix patch+ branch))
                       "0.1.0-SNAPSHOT")))}
 
-  :auto {"do" {:file-pattern #"\.(clj|cljs|cljx|cljc|edn|md)$"
-               :paths        [:java-source-paths
-                              :source-paths
-                              :resource-paths
-                              :test-paths
-                              :doc-paths]}}
+  :auto {:default {:file-pattern #"\.(clj|cljs|cljx|cljc|edn|md)$"
+                   :paths        [:java-source-paths
+                                  :source-paths
+                                  :resource-paths
+                                  :test-paths
+                                  :doc-paths]}}
 
   :cljfmt {:indents {quick-check [[:block 1]]
                      for-all     [[:block 1]]}})
