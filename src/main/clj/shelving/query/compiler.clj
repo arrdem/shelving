@@ -70,19 +70,14 @@
   {:stability  :stability/unstable
    :added      "0.0.0"}
   [conn {:keys [find in depmap plan]}]
-  ;; And now for the tricky bit
+  ;; And now for the tricky bit - build a transducer stack which implements the query
   `(fn [~'conn ~@in]
-     (let [~@(mapcat (fn [[lvar :as clause]]
-                       [lvar (compile-clause clause)])
-                     plan)
-           ~'schema (shelving.core/schema ~'conn)]
-       (->> [~(->> (for [l in]
-                     `['~l (shelving.core/id-for-record ~'schema ~(get-in depmap [l :spec]) ~l)])
-                   (into {}))]
-            ~@(map first plan)
-            (map (fn [state#]
-                   (->> (for [[lvar# spec#] '~(mapv (fn [lvar]
-                                                      [lvar (get-in depmap [lvar :spec])])
-                                                    find)]
-                          [lvar# (shelving.core/get-spec ~'conn spec# (get state# lvar#))])
-                        (into {}))))))))
+     (comp
+      ~@(map (fn [[lvar :as clause]] (compile-clause clause)))
+      (map (fn [state#]
+             (->> (for [[lvar# spec#]
+                        '~(mapv (fn [lvar]
+                                  [lvar (get-in depmap [lvar :spec])])
+                                find)]
+                    [lvar# (shelving.core/get-spec ~'conn spec# (get state# lvar#))])
+                  (into {})))))))
