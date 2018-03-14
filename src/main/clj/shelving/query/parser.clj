@@ -15,21 +15,32 @@
                  (symbol (str "?" s)))
                (s/gen simple-symbol?))))
 
-(s/def ::spec
-  (s/and (s/cat :from #{:from}
-                :spec qualified-keyword?)
-         (s/conformer
-          (fn [x]
-            (if (= ::s/invalid x) x
-                (:spec x)))
-          (fn [x]
-            {:from :from :spec x}))))
-
+;; More stupid due to CLJ-2003
 (s/def ::lvar+spec?
-  (s/and (s/or :simple ::lvar
-               :complex (s/cat :spec  (s/? ::spec)
-                        :lvar  ::lvar
-                        :coll? (s/? #{'...})))
+  (s/and (s/or :simple
+               ::lvar
+
+               :spec+lvar+coll
+               (s/and vector?
+                      (s/cat :from  #{:from}
+                             :spec  qualified-keyword?
+                             :lvar  ::lvar
+                             :coll? #{'...}))
+
+               :spec+lvar
+               (s/and vector?
+                      (s/cat :from #{:from}
+                             :spec qualified-keyword?
+                             :lvar ::lvar))
+
+               :lvar+coll
+               (s/and vector?
+                      (s/cat :lvar  ::lvar
+                             :coll? #{'...}))
+
+               :lvar
+               (s/and vector?
+                      (s/cat :lvar ::lvar)))
          (s/conformer
           (fn [o]
             (if (= o ::s/invalid) o
@@ -37,10 +48,10 @@
                   (if (= tag :simple)
                     {:lvar e} e))))
           (fn [{:keys [spec lvar coll?]}]
-            [:complex
-             (cond-> {:spec spec}
-               lvar (assoc :lvar lvar)
-               coll? (assoc :coll '...))]))))
+            (cond (and spec lvar coll?) [:spec+lvar+coll {:from :from :spec spec :lvar lvar :coll? '...}]
+                  (and spec lvar)       [:spec+lvar {:from :from :spec spec :lvar lvar}]
+                  (and lvar coll?)      [:lvar+coll {:lvar lvar :coll? '...}]
+                  lvar                  [:simple lvar])))))
 
 (s/def ::lvars
   (s/alt :inline (s/+ ::lvar+spec?)
@@ -89,7 +100,7 @@
          :inline (s/* ::clause)))
 
 ;; seq-style datalog
-;; 
+;;
 ;; Note that these apparently can't use conformers to simplify because they all inhabit the same seq
 ;; of inputs? Not sure how spec is handling the regex walk.
 (s/def :shelving.query.parser.seq/find

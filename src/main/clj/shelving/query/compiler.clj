@@ -67,17 +67,26 @@
 
   Given a query plan, compile it to a directly executable stack of
   functions."
-  {:stability  :stability/unstable
-   :added      "0.0.0"}
+  {:stability :stability/unstable
+   :added     "0.0.0"}
   [conn {:keys [find in depmap plan]}]
   ;; And now for the tricky bit - build a transducer stack which implements the query
   `(fn [~'conn ~@in]
-     (comp
-      ~@(map (fn [[lvar :as clause]] (compile-clause clause)))
-      (map (fn [state#]
-             (->> (for [[lvar# spec#]
-                        '~(mapv (fn [lvar]
-                                  [lvar (get-in depmap [lvar :spec])])
-                                find)]
-                    [lvar# (shelving.core/get-spec ~'conn spec# (get state# lvar#))])
-                  (into {})))))))
+     (transduce (comp
+                 ~@(map (fn [[lvar :as clause]] (compile-clause clause)) plan)
+                 (map (fn [state#]
+                        (->> (for [[lvar# spec#]
+                                   '~(mapv (fn [lvar]
+                                             [lvar (get-in depmap [lvar :spec])])
+                                           find)]
+                               [lvar# (shelving.core/get-spec ~'conn spec# (get state# lvar#))])
+                             (into {})))))
+                conj []
+                ~(if (not-empty in)
+                   `[[(for [~@(mapcat (fn [lvar]
+                                        (if (get-in depmap [lvar :coll?])
+                                          [(list 'quote lvar) [lvar]]
+                                          [(list 'quote lvar) lvar]))
+                                      in)]
+                        ~(into {} (map (fn [lvar] [(list 'quote lvar) lvar]) in)))]]
+                   [[{}]]))))

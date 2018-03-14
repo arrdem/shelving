@@ -47,15 +47,10 @@
   (let [{:keys [depmap]
          :or   {depmap {}}} query
         depmap              (volatile! depmap)
-        k*                  (mapv (fn [clause]
-                                    (match clause
-                                      [:specd [:from (spec :guard spec?) (lvar :guard lvar?)]]
-                                      (do (vswap! depmap ascribe-spec! lvar spec)
-                                          lvar)
-
-                                      [:unspecd (lvar :guard lvar?)]
-                                      (do (vswap! depmap ascribe-spec! lvar ::hole)
-                                          lvar)))
+        k*                  (mapv (fn [{:keys [lvar spec coll?] :or {spec ::hole coll? false}}]
+                                    (vswap! depmap ascribe-spec! lvar spec)
+                                    (vswap! depmap assoc-in [lvar :coll?] coll?)
+                                    lvar)
                                   (get query k []))]
     (assoc query
            k k*
