@@ -15,12 +15,32 @@
                  (symbol (str "?" s)))
                (s/gen simple-symbol?))))
 
-(s/def ::lvar+spec
-  (s/tuple #{:from} qualified-keyword? ::lvar))
+(s/def ::spec
+  (s/and (s/cat :from #{:from}
+                :spec qualified-keyword?)
+         (s/conformer
+          (fn [x]
+            (if (= ::s/invalid x) x
+                (:spec x)))
+          (fn [x]
+            {:from :from :spec x}))))
 
 (s/def ::lvar+spec?
-  (s/or :unspecd ::lvar
-        :specd   ::lvar+spec))
+  (s/and (s/or :simple ::lvar
+               :complex (s/cat :spec  (s/? ::spec)
+                        :lvar  ::lvar
+                        :coll? (s/? #{'...})))
+         (s/conformer
+          (fn [o]
+            (if (= o ::s/invalid) o
+                (let [[tag e] o]
+                  (if (= tag :simple)
+                    {:lvar e} e))))
+          (fn [{:keys [spec lvar coll?]}]
+            [:complex
+             (cond-> {:spec spec}
+               lvar (assoc :lvar lvar)
+               coll? (assoc :coll '...))]))))
 
 (s/def ::lvars
   (s/alt :inline (s/+ ::lvar+spec?)
@@ -48,7 +68,7 @@
 
 (s/def ::guard
   (s/and (s/cat :guard #{:guard}
-                :fn (s/with-gen (constantly true)  ;; FIXME lolsob
+                :fn (s/with-gen any? ;; FIXME lolsob
                       #(s/gen #{'clojure.core/even? 'clojure.core/odd?}))
                 :lvars (s/* ::lvar))
          (s/conformer
