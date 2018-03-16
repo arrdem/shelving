@@ -6,7 +6,9 @@
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:refer-clojure :exclude [flush get])
-  (:require [shelving.schema :as schema])
+  (:require [shelving.schema :as schema]
+            [shelving.spec.walk :as s.w]
+            [clojure.tools.logging :as log])
   (:import me.arrdem.UnimplementedOperationException))
 
 (defn- dx
@@ -282,8 +284,7 @@
   relation.
 
   Shelves may provide more efficient implementations of this method."
-  {:categories #{:shelving.core/impl :shelving.core/rel}
-   :stability  :stability/unstable
+  {:stability  :stability/unstable
    :added      "0.0.0"
    :arglists   '([conn rel-id spec id])}
   #'dx)
@@ -294,3 +295,33 @@
                       #(when (= id (first %)) (second %))
                       #(when (= id (second %)) (first %)))]
     (keep f (enumerate-rel conn real-rel-id))))
+
+(defn decompose
+  "Given a schema, a spec in the schema, a record ID and the record as a
+  value, decompose the record into its direct descendants and relations
+  thereto."
+  {:stability  :stability/stable
+   :added      "0.0.0"}
+  [schema spec id val]
+  (let [acc! (volatile! [])
+        ids (volatile! [])]
+    (log/debug id (pr-str val))
+    (binding [s.w/*walk-through-aliases* nil
+              s.w/*walk-through-multis*  nil]
+      (let [val* (s.w/walk-with-spec
+                  (fn [subspec subval]
+                    (vswap! ids conj
+                            (if (= subspec spec)
+                              (schema/as-id spec id)
+                              (schema/id-for-record schema subspec subval)))
+                    subval)
+                  (fn [subspec subval]
+                    (let [id* (last @ids)]
+                      (vswap! ids pop)
+                      (when (qualified-keyword? subspec)
+                        (vswap! acc! conj [:record* subspec id* subval])
+                        (when (not= spec subspec)
+                          (vswap! acc! conj [:rel [spec subspec] id id*])))
+                      id*))
+                  spec val)]
+        @acc!))))

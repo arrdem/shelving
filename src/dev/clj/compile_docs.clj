@@ -25,7 +25,7 @@
 (defn document-var [^clojure.lang.Var v heading]
   (binding [*ns* (.ns v)]
     (let [{:keys [categories arglists doc stability line file]
-         :as   var-meta} (meta v)]
+           :as   var-meta} (meta v)]
       (with-out-str
         (printf "%s [%s/%s](%s#L%s)\n"
                 heading
@@ -49,11 +49,11 @@
   (doseq [f files]
     (when (.contains (.getCanonicalPath f) "#")
       (.delete f)))
-    
+
   (let [fcache
         (->> (map (juxt identity slurp) files)
              (into {}))
-        
+
         links-map
         (reduce (fn [acc f]
                   (reduce (fn [acc [_ name]]
@@ -67,19 +67,19 @@
       (try (let [buff (get fcache f)
                  buff* (-> buff
                            (str/replace var-doc-pattern
-                                    (fn [[original heading name _ path line _body]]
-                                      (try (let [sym (symbol name)]
-                                             (require (symbol (namespace sym)))
-                                             (or (some-> sym resolve (document-var heading))
-                                                 original))
-                                           (catch Exception e
-                                             original))))
+                                        (fn [[original heading name _ path line _body]]
+                                          (try (let [sym (symbol name)]
+                                                 (require (symbol (namespace sym)))
+                                                 (or (some-> sym resolve (document-var heading))
+                                                     original))
+                                               (catch Exception e
+                                                 original))))
                            (str/replace var-quote-pattern
-                                    (fn [[original name suffix?]]
-                                      (if-let [link (get links-map name)]
-                                        (format "[`#'%s`](%s)" name link)
-                                        (do (log/warnf "%s: Couldn't find a link for %s!" f name)
-                                            original))))
+                                        (fn [[original name suffix?]]
+                                          (if-let [link (get links-map name)]
+                                            (format "[`#'%s`](%s)" name link)
+                                            (do (log/warnf "%s: Couldn't find a link for %s!" f name)
+                                                original))))
                            (str/replace #"\n{2,}\Z" "\n"))]
              (when  (not= buff buff*)
                (log/infof "Rebuilt %s" f)

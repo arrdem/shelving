@@ -84,7 +84,7 @@ Same as [`#'shelving.query/q`](/docs/queries.md#shelvingqueryq) but directly acc
 
 Queries are cached to avoid repeated compilation.
 
-## [shelving.core/count-spec](shelving/impl.clj#L209)
+## [shelving.core/count-spec](shelving/impl.clj#L211)
  - `(count-spec conn spec)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -97,7 +97,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/count-rel](shelving/impl.clj#L253)
+## [shelving.core/count-rel](shelving/impl.clj#L255)
  - `(count-rel conn rel-id)`
 
 **UNSTABLE**: This API will probably change in the future

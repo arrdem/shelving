@@ -17,13 +17,15 @@
             [clojure.spec.alpha :as s]
             [clojure.tools.logging :as log]
             [potemkin :refer [import-vars]]
-            [shelving.impl :as imp]
+            [shelving.impl :as impl]
             [shelving.schema :as schema]
-            shelving.query)
+            shelving.query
+            [shelving.impl :as imp])
   (:import [me.arrdem.shelving
             MissingRelException
             MissingSpecException
-            SchemaMigrationException]))
+            SchemaMigrationException
+            RecordIdentifier]))
 
 ;; Data specs
 ;;--------------------------------------------------------------------------------------------------
@@ -36,16 +38,12 @@
 (s/def :shelving.core.spec/record?
   boolean?)
 
-(s/def :shelving.core.spec/id-fn
-  ifn?)
-
 (s/def :shelving.core.spec/rels
   (s/coll-of #(s/valid? ::rel-id %)))
 
 (s/def ::spec
   (s/keys :req-un [:shelving.core.spec/type
                    :shelving.core.spec/record?
-                   :shelving.core.spec/id-fn
                    :shelving.core.spec/rels]))
 
 (s/def :shelving.core.schema/type #{::schema})
@@ -75,7 +73,7 @@
   schema
   enumerate-specs enumerate-rels
   count-spec count-rel
-  enumerate-spec enumerate-rel 
+  enumerate-spec enumerate-rel
   put-rel get-rel]
  [shelving.schema
   empty-schema value-spec record-spec
@@ -85,7 +83,8 @@
   id-for-record
   check-schema
   check-schemas check-schemas!
-  spec-rel has-rel? is-alias? resolve-alias]
+  spec-rel has-rel? is-alias? resolve-alias
+  id? ->id]
  [shelving.query
   q q!])
 
@@ -95,7 +94,7 @@
   (let [schema (schema conn)]
     (cond (has-spec? schema spec)
           schema
-          
+
           (not (automatic-specs? schema))
           (throw (MissingSpecException.
                   (format "Attempted to insert into unknown spec %s!" spec)))
@@ -130,20 +129,30 @@
     (if (empty? queue) id
         (do (log/debug t)
             (match t
+              ;; Base case. raw record that needs decomposing
               [:record spec* id* val*]
-              (let [schema* (ensure-spec! conn spec)] 
+              (let [schema* (ensure-spec! conn spec)]
                 (if (and (has? conn spec* id*)
                          (is-value? schema* spec*))
                   ;; skip the write
                   (recur queue* dirty?)
-                  (do (imp/put-spec conn spec* id* val*)
-                      (recur (into queue*
-                                   (schema/decompose schema* spec* id* val*))
-                             (conj dirty? id*)))))
+                  (recur (into queue* (impl/decompose schema* spec* id* val*))
+                         (conj dirty? id*))))
 
+              ;; Case of an already decomposed record
+              [:record* spec* id* val*]
+              (let [schema* (ensure-spec! conn spec)]
+                (if (and (has? conn spec* id*)
+                         (is-value? schema* spec*))
+                  ;; skip the write
+                  (recur queue* dirty?)
+                  (do (impl/put-spec conn spec* id* val*)
+                      (recur queue* (conj dirty? id*)))))
+
+              ;; Case of a record's rel(s)
               [:rel rel-id from-id to-id]
               (do (ensure-rel! conn rel-id)
-                  (imp/put-rel conn rel-id from-id to-id)
+                  (impl/put-rel conn rel-id from-id to-id)
                   (recur queue* dirty?))))))
   id)
 
@@ -164,16 +173,15 @@
    :added      "0.0.0"}
   ([conn spec val]
    (s/assert spec val)
-   (let [id (id-for-record (imp/schema conn) spec val)]
+   (let [id (id-for-record (impl/schema conn) spec val)]
      (put* conn spec id val)))
   ([conn spec id val]
    (s/assert spec val)
    (assert (is-record? (schema conn) spec))
    (put* conn spec id val)))
 
-
-;; FIXME: this needs to do value recomposition if that's behavior supported by the back-end
-;; currently in use. How to express that? Above we don't do decomposition reversably...
+;; FIXME (arrdem 2018-03-04):
+;;   figure out how to make this generic so that connections can leverage an object cache.
 (defn get-spec
   "Restructuring get.
 
@@ -185,13 +193,19 @@
   {:stability  :stability/stable
    :added      "0.0.0"}
   ([conn spec record-id]
-   {:post [(or (s/valid? spec %)
-               (nil? %))]}
-   (imp/get-spec conn spec record-id nil))
+   (get-spec conn spec record-id nil))
   ([conn spec record-id not-found]
    {:post [(or (s/valid? spec %)
-               (= not-found %))]}
-   (imp/get-spec conn spec record-id not-found)))
+               (= % not-found))]}
+   (let [v (impl/get-spec conn spec (schema/as-id spec record-id) not-found)]
+     (if (= v not-found) v
+         (clojure.walk/prewalk
+          (fn [node]
+            (if-not (id? node) node
+                    (get-spec conn
+                              (.spec ^RecordIdentifier node)
+                              (.id ^RecordIdentifier node))))
+          v)))))
 
 (defn alter-schema
   "Attempts alter the schema of a live connection.
@@ -229,5 +243,5 @@
                 "Failed to validate the migrated schema!" problems))
         ;; FIXME: this is SUPER FUCKING DANGEROUS. Who knows what the storage layer is gonna do. If
         ;; this throws, we're kinda shit out of luck here.
-        (do (imp/set-schema conn schema*)
+        (do (impl/set-schema conn schema*)
             schema*)))))

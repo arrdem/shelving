@@ -111,7 +111,7 @@
                          ;; FIXME (arrdem 2018-02-17):
                          ;;   Only tuple clauses are supported at this time, if not and guard
                          ;;   clauses get added, they'll need to be supported here.
-                         ))
+))
                      where)]
     (assoc query
            :where where*

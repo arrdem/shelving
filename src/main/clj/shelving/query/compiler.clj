@@ -4,8 +4,8 @@
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:require [clojure.core.match :refer [match]]
-            [shelving.query.planner :as p]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [shelving.query.planner :as p]))
 
 (defn compile-op
   "Implementation detail of `#'compile-clause`.
@@ -24,28 +24,28 @@
   (match clause
     {:type ::p/scan-rel, :rel rel, :id id}
     `(mapcat (fn [~'state]
-               #_(println ~(str "DEBUG " (name lvar) " " (pr-str clause) "]\n        ") ~'state)
+               (log/debug ~(str (name lvar) " " (pr-str clause) "]\n        ") ~'state)
                (map (fn [~'e]
                       (assoc ~'state '~lvar ~'e))
                     (shelving.core/get-rel ~'conn ~rel ~id))))
 
     {:type ::p/scan-spec :spec spec}
     `(mapcat (fn [~'state]
-               #_(println ~(str "DEBUG " (name lvar) " " (pr-str clause) "]\n        ") ~'state)
+               (log/debug ~(str (name lvar) " " (pr-str clause) "]\n        ") ~'state)
                (map (fn [~'e]
                       (assoc ~'state '~lvar ~'e))
                     (shelving.core/enumerate-spec ~'conn ~spec))))
 
     {:type ::p/project :rel rel :left left-var}
     `(mapcat (fn [~'state]
-               #_(println ~(str "DEBUG " (name lvar) " " (pr-str clause) "]\n        ") ~'state)
+               (log/debug ~(str (name lvar) " " (pr-str clause) "]\n        ") ~'state)
                (map (fn [~'e]
                       (assoc ~'state '~lvar ~'e))
                     (shelving.core/get-rel ~'conn ~rel (get ~'state '~left-var)))))
 
     {:type ::p/intersect :left left-var :right right-var}
     `(keep (fn [~'state]
-             #_(println ~(str "DEBUG " (name lvar) " " (pr-str clause) "]\n        ") ~'state)
+             (log/debug ~(str (name lvar) " " (pr-str clause) "]\n        ") ~'state)
              (let [l# (get ~'state '~left-var)]
                (when (= l# (get ~'state '~right-var))
                  (assoc ~'state '~lvar l#)))))))

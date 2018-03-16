@@ -13,35 +13,19 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.tools.logging :as log]
             [hasch.core :refer [uuid]]
+            [hasch.benc :refer [magics PHashCoercion -coerce
+                                digest coerce-seq xor-hashes encode-safe]]
+            [hasch.platform :refer [encode]]
             [shelving.spec :as ss]
             [shelving.spec.walk :as s.w])
   (:import java.nio.ByteBuffer
            java.util.UUID
-           me.arrdem.UnimplementedOperationException))
-
-;; ID tools
-;;--------------------------------------------------------------------------------------------------
-(defn random-uuid
-  "Returns a random UUID."
-  {:categories #{::util}
-   :added      "0.0.0"
-   :stability  :stability/stable}
-  [_]
-  (UUID/randomUUID))
-
-(defn digest->uuid
-  "Takes the first 16b of a `byte[]` as a 1228bi UUID.
-
-  An `IndexOutOfBoundsException` will probably be thrown if the
-  `byte[]` is too small."
-  {:categories #{::util}
-   :added      "0.0.0"
-   :stability  :stability/stable}
-  [digest]
-  (let [buff (ByteBuffer/wrap digest)]
-    (UUID.
-     (.getLong buff 0)
-     (.getLong buff 1))))
+           me.arrdem.UnimplementedOperationException
+           me.arrdem.shelving.RecordIdentifier)
+  (:import java.util.UUID
+           clojure.lang.Keyword
+           java.io.Writer
+           me.arrdem.shelving.RecordIdentifier))
 
 ;; Intentional interface for schemas
 ;;--------------------------------------------------------------------------------------------------
@@ -132,7 +116,7 @@
   (when (not-empty opts)
     (log/warn "value-spec got ignored opts" opts))
   (reduce #(cond-> %1
-             (not (has-spec? %1 %2))       (value-spec %2) 
+             (not (has-spec? %1 %2))       (value-spec %2)
              (not (has-rel? %1 [spec %2])) (spec-rel [spec %2]))
           (shelf-spec* schema spec false)
           (filter qualified-keyword?
@@ -194,6 +178,59 @@
   [{:keys [automatic-specs?]}]
   (or automatic-specs? false))
 
+;; Working with record IDs
+(defmethod print-dup RecordIdentifier [^RecordIdentifier id ^java.io.Writer w]
+  (.write w (str "#=" `(RecordIdentifier. ~(.spec id) ~(.id id)))))
+
+(extend-protocol PHashCoercion
+  RecordIdentifier
+  (-coerce [^RecordIdentifier this md-create-fn write-handlers]
+    (encode (:binary magics)
+            (coerce-seq [(.getTag this) (.getForm this)]
+                        md-create-fn write-handlers))))
+
+(defn read-id
+  "Helper used for reading Shelving ID tagged reader literals."
+  {:added     "0.0.0"
+   :stability :stability/unstable}
+  [[^Keyword spec ^UUID id]]
+  (RecordIdentifier. spec id))
+
+(defn id?
+  "Predicate. True only for Shelving IDs."
+  {:added     "0.0.0"
+   :stability :stability/unstable}
+  [o]
+  (instance? RecordIdentifier o))
+
+(defn ->id
+  "Helper. Constructor for Shelving IDs."
+  {:added     "0.0.0"
+   :stability :stability/unstable}
+  [^Keyword spec ^UUID id]
+  (RecordIdentifier. spec id))
+
+(defn- random-uuid
+  [_]
+  (UUID/randomUUID))
+
+(defn- digest->uuid
+  [digest]
+  (let [buff (ByteBuffer/wrap digest)]
+    (UUID.
+     (.getLong buff 0)
+     (.getLong buff 1))))
+
+(defn as-id
+  "Helper. Converts a pair, being a spec keyword and either a UUID or a
+  Shelving ID to an ID in the given spec."
+  {:added     "0.0.0"
+   :stability :stability/unstable}
+  [spec id]
+  (if (id? id)
+    (do (assert (= (.spec ^RecordIdentifier id) spec)) id)
+    (->id spec id)))
+
 (defn id-for-record
   "Returns the `val`'s identifying UUID according to the spec's schema entry."
   {:categories #{::schema}
@@ -207,7 +244,7 @@
                        (clojure.core/get spec)
                        (clojure.core/get :record?))
                  random-uuid uuid)]
-    (key-fn val)))
+    (->id spec (key-fn val))))
 
 (defn check-schemas
   "Helper for use in checking compatibility between database persistable specs.
@@ -382,25 +419,3 @@
                    (keys rels))
            set seq))
       seq))
-
-(defn decompose
-  "Given a schema, a spec in the schema, a record ID and the record as a
-  value, decompose the record into its direct descendants and relations
-  thereto."
-  {:categories #{::schema}
-   :stability  :stability/stable
-   :added      "0.0.0"}
-  [schema spec id val]
-  (let [acc! (volatile! [])]
-    (binding [s.w/*walk-through-aliases* nil
-              s.w/*walk-through-multis*  nil]
-      (s.w/postwalk-with-spec
-       (fn [subspec subval]
-         (when (and (qualified-keyword? subspec)
-                    (not= spec subspec))
-           (let [id* (id-for-record schema subspec subval)]
-             (vswap! acc! conj [:record subspec id* subval])
-             (vswap! acc! conj [:rel [spec subspec] id id*])))
-         subval)
-       spec val)
-      @acc!)))
