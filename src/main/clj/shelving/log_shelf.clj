@@ -30,10 +30,7 @@
     ;; Doesn't even bother with schema validation
     ;;
     ;; SERIOUSLY DON'T USE THIS
-    {:type              ::shelf
-     ::state            state
-     :path              path
-     :flush-after-write (:flush-after-write s)}))
+    (merge s {:type ::shelf, ::state state})))
 
 ;; EDN shelves don't have write batching and are always open.
 (defmethod imp/open ::shelf [s] s)
