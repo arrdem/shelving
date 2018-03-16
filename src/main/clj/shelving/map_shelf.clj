@@ -36,7 +36,7 @@
           ;; Install the schema in a new db
           (merge persisted-schema schema))]
 
-    {:type ::shelf, ::state (atom (assoc persisted-state :schema live-schema))}))
+    (merge s {:type ::shelf, ::state (atom (assoc persisted-state :schema live-schema))})))
 
 ;; EDN shelves don't have write batching and are always open.
 (defmethod impl/open ::shelf [s] s)
