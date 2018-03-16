@@ -2,7 +2,7 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.test :as t]
             [shelving.core :as sh]
-            [shelving.query :refer [q q!]]
+            [shelving.query :refer [q q! q* q** q*** q****]]
             [shelving.log-shelf :refer [->LogShelf]]))
 
 (s/def ::foo string?)
@@ -42,17 +42,21 @@
                     set))))
 
     (t/testing "Testing using ::bar as a pivot table between ::foo and ::qux"
-      (let [prepared-q '[:find  [?foo]
-                         :in    [?b]
-                         :where [[?bar [::bar ::qux] ?b]
-                                 [?bar [::bar ::foo] ?foo]]]
-            q-fn       (q *conn prepared-q)]
+      (let [single-q-fn (q *conn '[:find  [?foo]
+                                   :in    [?b]
+                                   :where [[?bar [::bar ::qux] ?b]
+                                           [?bar [::bar ::foo] ?foo]]])
+            multi-q-fn  (q *conn '[:find  [?foo]
+                                   :in    [?b ...]
+                                   :where [[?bar [::bar ::qux] ?b]
+                                           [?bar [::bar ::foo] ?foo]]])]
         (doseq [[b s]
                 [[3 #{"a"}]
                  [2 #{"a"}]
                  [1 #{"a" "b" "c"}]]]
           (t/is (= s
-                   (->> (q-fn *conn b) (map '?foo) set)))))
+                   (->> (single-q-fn *conn b) (map '?foo) set)
+                   (->> (multi-q-fn *conn [b]) (map '?foo) set)))))
 
       (t/is (= #{1}
                (->> (q! *conn

@@ -7,7 +7,8 @@
             [clojure.core.match :refer [match]]
             [shelving.impl :as impl]
             [shelving.schema :as schema]
-            [shelving.query.common :refer [lvar? spec?]]))
+            [shelving.query.common :refer [lvar? spec?]]
+            [clojure.tools.logging :as log]))
 
 (defn- put-spec!
   "Helper for ascribing types to lvars.
@@ -41,21 +42,22 @@
 
 (defn- normalize-clauses*
   "find and in clauses have the same spec'd/unspec'd forms, so they normalize the same way."
-  {:stability  :stability/unstable
-   :added      "0.0.0"}
+  {:stability :stability/unstable
+   :added     "0.0.0"}
   [k query]
   (let [{:keys [depmap]
          :or   {depmap {}}} query
         depmap              (volatile! depmap)
-        k*                  (mapv (fn [clause]
-                                    (match clause
-                                      [:specd [:from (spec :guard spec?) (lvar :guard lvar?)]]
-                                      (do (vswap! depmap ascribe-spec! lvar spec)
-                                          lvar)
-
-                                      [:unspecd (lvar :guard lvar?)]
-                                      (do (vswap! depmap ascribe-spec! lvar ::hole)
-                                          lvar)))
+        k*                  (mapv (fn [{:keys [lvar spec coll?]
+                                        :or   {spec  ::hole
+                                               coll? nil}}]
+                                    (let [coll? (not (nil? coll?))]
+                                      (vswap! depmap ascribe-spec! lvar spec)
+                                      (vswap! depmap assoc-in [lvar :coll?] coll?)
+                                      (when (and (= k :find) coll?)
+                                        (log/warnf "While compiling :find clause for lvar %s, unsupported collection modifier was ignored!"
+                                                   lvar))
+                                      lvar))
                                   (get query k []))]
     (assoc query
            k k*
@@ -93,7 +95,7 @@
                          (do (when (lvar? lhs)
                                ;; Ensure the lhs exists by ascribing it ::hole if it doesn't exist
                                (vswap! depmap ascribe-spec! lhs ::hole))
-                             
+
                              (when (lvar? rhs)
                                ;; Ascribe available spec information to rhs
                                (vswap! depmap ascribe-spec! rhs spec))
@@ -105,7 +107,7 @@
                              (when (lvar? rhs)
                                (vswap! depmap ascribe-spec! rhs ts))
                              [lhs rel-id rhs])
-                         
+
                          ;; FIXME (arrdem 2018-02-17):
                          ;;   Only tuple clauses are supported at this time, if not and guard
                          ;;   clauses get added, they'll need to be supported here.

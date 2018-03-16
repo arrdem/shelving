@@ -15,12 +15,39 @@
                  (symbol (str "?" s)))
                (s/gen simple-symbol?))))
 
-(s/def ::lvar+spec
-  (s/tuple #{:from} qualified-keyword? ::lvar))
-
+;; More stupid due to CLJ-2003
 (s/def ::lvar+spec?
-  (s/or :unspecd ::lvar
-        :specd   ::lvar+spec))
+  (s/and (s/or :simple
+               ::lvar
+
+               :spec+lvar+coll
+               (s/cat :from  #{:from}
+                      :spec  qualified-keyword?
+                      :lvar  ::lvar
+                      :coll? #{'...})
+
+               :spec+lvar
+               (s/cat :from #{:from}
+                      :spec qualified-keyword?
+                      :lvar ::lvar)
+
+               :lvar+coll
+               (s/cat :lvar  ::lvar
+                      :coll? #{'...})
+
+               :lvar
+               (s/cat :lvar ::lvar))
+         (s/conformer
+          (fn [o]
+            (if (= o ::s/invalid) o
+                (let [[tag e] o]
+                  (if (= tag :simple)
+                    {:lvar e} e))))
+          (fn [{:keys [spec lvar coll?]}]
+            (cond (and spec lvar coll?) [:spec+lvar+coll {:from :from :spec spec :lvar lvar :coll? '...}]
+                  (and spec lvar)       [:spec+lvar {:from :from :spec spec :lvar lvar}]
+                  (and lvar coll?)      [:lvar+coll {:lvar lvar :coll? '...}]
+                  lvar                  [:simple lvar])))))
 
 (s/def ::lvars
   (s/alt :inline (s/+ ::lvar+spec?)
@@ -40,20 +67,21 @@
   (s/and (s/cat :not #{:not}
                 :clause ::clause)
          (s/conformer
-          (fn [{:keys [clause]}]
-            clause)
+          (fn [{:keys [clause] :as o}]
+            (if (= ::s/invalid o) o clause))
           (fn [clause]
             {:not    :not
              :clause clause}))))
 
 (s/def ::guard
   (s/and (s/cat :guard #{:guard}
-                :fn (s/with-gen (constantly true)  ;; FIXME lolsob
+                :fn (s/with-gen any? ;; FIXME lolsob
                       #(s/gen #{'clojure.core/even? 'clojure.core/odd?}))
                 :lvars (s/* ::lvar))
          (s/conformer
-          (fn [{:keys [fn lvars]}]
-            (cons fn lvars))
+          (fn [{:keys [fn lvars] :as o}]
+            (if (= ::s/invalid o) o
+                (cons fn lvars)))
           (fn [[fn & lvars]]
             {:guard :guard
              :fn    fn
@@ -69,7 +97,7 @@
          :inline (s/* ::clause)))
 
 ;; seq-style datalog
-;; 
+;;
 ;; Note that these apparently can't use conformers to simplify because they all inhabit the same seq
 ;; of inputs? Not sure how spec is handling the regex walk.
 (s/def :shelving.query.parser.seq/find
@@ -86,13 +114,15 @@
 
 (defn- conform-datalog-seq
   "Provides a datalog front end to the Shelving query system."
-  [[tag v]]
-  (let [{{find :symbols}  :find
-         {where :rels}    :where
-         {in :parameters} :in} v]
-    {:find  (or (second find) [])
-     :where (or (second where) [])
-     :in    (or (second in) [])}))
+  [o]
+  (if (= ::s/invalid o) o
+      (let [[tag v] o
+            {{find :symbols}  :find
+             {where :rels}    :where
+             {in :parameters} :in} v]
+        {:find  (or (second find) [])
+         :where (or (second where) [])
+         :in    (or (second in) [])})))
 
 (defn- unform-datalog-seq
   [{:keys [find in where]}]
@@ -139,10 +169,12 @@
 (s/def :shelving.query.parser.map/where
   (s/coll-of ::clause :into []))
 
-(defn- conform-datalog-map [{:keys [find in where]}]
-  {:find  (or find [])
-   :in    (or in [])
-   :where (or where [])})
+(defn- conform-datalog-map [o]
+  (if (= o ::s/invalid) o
+      (let [{:keys [find in where]} o]
+        {:find  (or find [])
+         :in    (or in [])
+         :where (or where [])})))
 
 (defn- unform-datalog-map [{:keys [find in where] :as v}] v)
 
@@ -158,5 +190,7 @@
 (s/def ::datalog
   (s/and (s/or :seq :shelving.query.parser.seq/datalog
                :map :shelving.query.parser.map/datalog)
-         (s/conformer second
+         (s/conformer (fn [o]
+                        (if (= ::s/invalid o) o
+                            (second o)))
                       (fn [v] [:seq v]))))

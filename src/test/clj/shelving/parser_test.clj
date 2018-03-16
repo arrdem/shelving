@@ -1,6 +1,7 @@
 (ns shelving.parser-test
   "Tests of the clojure.spec(.alpha) datalog parser."
   (:require [clojure.spec.alpha :as s]
+            [clojure.spec.gen.alpha :as sgen]
             [clojure.test :as t]
             [clojure.test.check :as tc]
             [clojure.test.check.properties :as prop]
@@ -14,7 +15,7 @@
 
 (t/deftest test-query-parser-examples
   (t/testing "A bunch of hand examples before we get to the test queries"
-    (t/are [q] (s/valid? ::p/datalog (quote q)) 
+    (t/are [q] (s/valid? ::p/datalog (quote q))
       [:find ?foo]
       [:find [?foo]]
       {:find [?foo]}
@@ -39,6 +40,19 @@
                  (:guard #(.endsWith % "foo") ?b)
                  (:not [?foo [::foo ::bar] "c"])]])))
 
+(t/deftest test-specs-generate
+  (doseq [s [::p/lvar ::p/lvar+spec? ::p/lvars
+             ::p/full-tuple ::p/terse-tuple ::p/tuple
+             #_::p/negation #_::p/guard
+             ::p/clause ::p/clauses
+
+             :shelving.query.parser.map/find
+             :shelving.query.parser.map/in
+             :shelving.query.parser.map/where
+             ]]
+    (t/testing (format "Attempting to generate examples of spec %s" s)
+      (t/is (sgen/sample (s/gen s))))))
+
 (t/deftest test-query-normal-form
   (t/testing "Seq and Map queries should round-trip through the same normal form."
     (t/testing "Can maps self-round-trip?"
@@ -58,7 +72,7 @@
         (prop/for-all [q (s/gen seq-datalog)]
           (let [c (s/conform seq-datalog q)]
             (t/is (= c (->> (s/unform seq-datalog c) (s/conform seq-datalog))))))))
-    
+
     (t/testing "Can seqs round-trip through maps?"
       (tc/quick-check 100
         (prop/for-all [q (s/gen seq-datalog)]
