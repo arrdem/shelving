@@ -2,7 +2,7 @@
 
 The searching API and helpers designed to support it.
 
-## [shelving.query/q****](shelving/query.clj#L16)
+## [shelving.query/q\*\*\*\*](shelving/query.clj#L16)
  - `(q**** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -13,7 +13,7 @@ Given a query and a connection, builds and returns the dependency map on the que
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q***](shelving/query.clj#L46)
+## [shelving.query/q\*\*\*](shelving/query.clj#L46)
  - `(q*** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -24,7 +24,7 @@ Given a query and a connection, builds and returns both the fully analyzed logic
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q**](shelving/query.clj#L82)
+## [shelving.query/q\*\*](shelving/query.clj#L82)
  - `(q** conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -35,7 +35,7 @@ Given a query and a connection, builds and returns a sequence of plan "clauses" 
 
 Intended only as a mechanism for inspecting query planning & execution.
 
-## [shelving.query/q*](shelving/query.clj#L98)
+## [shelving.query/q\*](shelving/query.clj#L98)
  - `(q* conn query)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -65,7 +65,7 @@ Compiles and returns a new function of a connection and `in` parameters which wi
 
 Query compilation is somewhat expensive so it's suggested that queries be compiled once and then parameterized repeatedly.
 
-## [shelving.query/*query-cache*](shelving/query.clj#L157)
+## [shelving.query/\*query-cache\*](shelving/query.clj#L157)
 
 **UNSTABLE**: This API will probably change in the future
 
