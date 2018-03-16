@@ -14,7 +14,7 @@
 
 (t/deftest test-query-parser-examples
   (t/testing "A bunch of hand examples before we get to the test queries"
-    (t/are [q] (s/valid? ::p/datalog (quote q)) 
+    (t/are [q] (s/valid? ::p/datalog (quote q))
       [:find ?foo]
       [:find [?foo]]
       {:find [?foo]}
