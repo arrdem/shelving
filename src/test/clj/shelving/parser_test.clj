@@ -58,7 +58,7 @@
         (prop/for-all [q (s/gen seq-datalog)]
           (let [c (s/conform seq-datalog q)]
             (t/is (= c (->> (s/unform seq-datalog c) (s/conform seq-datalog))))))))
-    
+
     (t/testing "Can seqs round-trip through maps?"
       (tc/quick-check 100
         (prop/for-all [q (s/gen seq-datalog)]
