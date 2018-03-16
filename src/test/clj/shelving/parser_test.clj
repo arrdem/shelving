@@ -48,8 +48,7 @@
 
              :shelving.query.parser.map/find
              :shelving.query.parser.map/in
-             :shelving.query.parser.map/where
-             ]]
+             :shelving.query.parser.map/where]]
     (t/testing (format "Attempting to generate examples of spec %s" s)
       (t/is (sgen/sample (s/gen s))))))
 
