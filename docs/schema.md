@@ -54,7 +54,7 @@ Function of a schema, returning a new schema which allows for the automatic addi
 
 Function of a schema, indicating whether it allows for the automatic creation of "value" specs.
 
-## [shelving.core/spec-rel](shelving/schema.clj#L288)
+## [shelving.core/spec-rel](shelving/schema.clj#L304)
  - `(spec-rel schema [from-spec to-spec :as rel-id])`
 
 Enters a rel(ation) into a schema, returning a new schema which will maintain that rel.
@@ -69,13 +69,13 @@ At insertion time, the `to-spec` must exist as a supported shelf.
 
 The `to-spec` MAY NEVER name a "record" shelf. `to-spec` must be a "value" shelf.
 
-## [shelving.core/automatic-rels](shelving/schema.clj#L356)
+## [shelving.core/automatic-rels](shelving/schema.clj#L372)
  - `(automatic-rels schema)`
  - `(automatic-rels schema bool)`
 
 Function of a schema, returning a new schema which allows for the automatic addition of relations. Relations must be between known specs, and may not relate to records.
 
-## [shelving.core/automatic-rels?](shelving/schema.clj#L369)
+## [shelving.core/automatic-rels?](shelving/schema.clj#L385)
  - `(automatic-rels? {:keys [automatic-rels?]})`
 
 Predicate indicating whether the schema supports automatic relations.

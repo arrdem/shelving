@@ -45,7 +45,7 @@ Enumerates all the known specs.
 
 Shelves may provide alternate implementations of this method.
 
-### [shelving.core/put-spec](shelving/core.clj#L147)
+### [shelving.core/put-spec](shelving/core.clj#L159)
  - `(put-spec conn spec val)`
  - `(put-spec conn spec id val)`
 
@@ -59,7 +59,7 @@ It is an error to specify the ID when inserting into a "value" shelf.
 
 Shelves must implement [`#'shelving.impl/put-spec`](/docs/impl.md#shelvingimplput-spec), which backs this method.
 
-### [shelving.core/get-spec](shelving/core.clj#L174)
+### [shelving.core/get-spec](shelving/core.clj#L185)
  - `(get-spec conn spec record-id)`
  - `(get-spec conn spec record-id not-found)`
 
@@ -180,7 +180,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.core/alter-schema](shelving/core.clj#L191)
+### [shelving.core/alter-schema](shelving/core.clj#L210)
  - `(alter-schema conn f & args)`
 
 Attempts alter the schema of a live connection.
