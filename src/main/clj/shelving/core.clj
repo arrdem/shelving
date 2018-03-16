@@ -185,10 +185,12 @@
   {:stability  :stability/stable
    :added      "0.0.0"}
   ([conn spec record-id]
-   {:post [(s/valid? spec %)]}
+   {:post [(or (s/valid? spec %)
+               (nil? %))]}
    (imp/get-spec conn spec record-id nil))
   ([conn spec record-id not-found]
-   {:post [(s/valid? spec %)]}
+   {:post [(or (s/valid? spec %)
+               (= not-found %))]}
    (imp/get-spec conn spec record-id not-found)))
 
 (defn alter-schema
