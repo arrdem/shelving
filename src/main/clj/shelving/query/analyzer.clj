@@ -42,15 +42,15 @@
 
 (defn- normalize-clauses*
   "find and in clauses have the same spec'd/unspec'd forms, so they normalize the same way."
-  {:stability  :stability/unstable
-   :added      "0.0.0"}
+  {:stability :stability/unstable
+   :added     "0.0.0"}
   [k query]
   (let [{:keys [depmap]
          :or   {depmap {}}} query
         depmap              (volatile! depmap)
         k*                  (mapv (fn [{:keys [lvar spec coll?]
-                                        :or {spec ::hole
-                                             coll? nil}}]
+                                        :or   {spec  ::hole
+                                               coll? nil}}]
                                     (let [coll? (not (nil? coll?))]
                                       (vswap! depmap ascribe-spec! lvar spec)
                                       (vswap! depmap assoc-in [lvar :coll?] coll?)
