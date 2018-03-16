@@ -21,15 +21,15 @@
   [current-spec lvar ascribed-spec]
   (cond (and current-spec
              (not= current-spec ::hole)
+             (= ascribed-spec ::hole))
+        current-spec
+
+        (and current-spec
+             (not= current-spec ::hole)
              (not= current-spec ascribed-spec))
         (throw (IllegalStateException.
                 (format "lvar '%s' ascribed incompatible specs '%s' and '%s'!"
                         lvar current-spec ascribed-spec)))
-
-        (and current-spec
-             (not= current-spec ::hole)
-             (= ascribed-spec ::hole))
-        current-spec
 
         :else
         ascribed-spec))
