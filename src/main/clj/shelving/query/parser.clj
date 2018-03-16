@@ -21,26 +21,22 @@
                ::lvar
 
                :spec+lvar+coll
-               (s/and vector?
-                      (s/cat :from  #{:from}
-                             :spec  qualified-keyword?
-                             :lvar  ::lvar
-                             :coll? #{'...}))
+               (s/cat :from  #{:from}
+                      :spec  qualified-keyword?
+                      :lvar  ::lvar
+                      :coll? #{'...})
 
                :spec+lvar
-               (s/and vector?
-                      (s/cat :from #{:from}
-                             :spec qualified-keyword?
-                             :lvar ::lvar))
+               (s/cat :from #{:from}
+                      :spec qualified-keyword?
+                      :lvar ::lvar)
 
                :lvar+coll
-               (s/and vector?
-                      (s/cat :lvar  ::lvar
-                             :coll? #{'...}))
+               (s/cat :lvar  ::lvar
+                      :coll? #{'...})
 
                :lvar
-               (s/and vector?
-                      (s/cat :lvar ::lvar)))
+               (s/cat :lvar ::lvar))
          (s/conformer
           (fn [o]
             (if (= o ::s/invalid) o
@@ -71,8 +67,8 @@
   (s/and (s/cat :not #{:not}
                 :clause ::clause)
          (s/conformer
-          (fn [{:keys [clause]}]
-            clause)
+          (fn [{:keys [clause] :as o}]
+            (if (= ::s/invalid o) o clause))
           (fn [clause]
             {:not    :not
              :clause clause}))))
@@ -83,8 +79,9 @@
                       #(s/gen #{'clojure.core/even? 'clojure.core/odd?}))
                 :lvars (s/* ::lvar))
          (s/conformer
-          (fn [{:keys [fn lvars]}]
-            (cons fn lvars))
+          (fn [{:keys [fn lvars] :as o}]
+            (if (= ::s/invalid o) o
+                (cons fn lvars)))
           (fn [[fn & lvars]]
             {:guard :guard
              :fn    fn
@@ -117,13 +114,15 @@
 
 (defn- conform-datalog-seq
   "Provides a datalog front end to the Shelving query system."
-  [[tag v]]
-  (let [{{find :symbols}  :find
-         {where :rels}    :where
-         {in :parameters} :in} v]
-    {:find  (or (second find) [])
-     :where (or (second where) [])
-     :in    (or (second in) [])}))
+  [o]
+  (if (= ::s/invalid o) o
+      (let [[tag v] o
+            {{find :symbols}  :find
+             {where :rels}    :where
+             {in :parameters} :in} v]
+        {:find  (or (second find) [])
+         :where (or (second where) [])
+         :in    (or (second in) [])})))
 
 (defn- unform-datalog-seq
   [{:keys [find in where]}]
@@ -170,10 +169,12 @@
 (s/def :shelving.query.parser.map/where
   (s/coll-of ::clause :into []))
 
-(defn- conform-datalog-map [{:keys [find in where]}]
-  {:find  (or find [])
-   :in    (or in [])
-   :where (or where [])})
+(defn- conform-datalog-map [o]
+  (if (= o ::s/invalid) o
+      (let [{:keys [find in where]} o]
+        {:find  (or find [])
+         :in    (or in [])
+         :where (or where [])})))
 
 (defn- unform-datalog-map [{:keys [find in where] :as v}] v)
 
@@ -189,5 +190,7 @@
 (s/def ::datalog
   (s/and (s/or :seq :shelving.query.parser.seq/datalog
                :map :shelving.query.parser.map/datalog)
-         (s/conformer second
+         (s/conformer (fn [o]
+                        (if (= ::s/invalid o) o
+                            (second o)))
                       (fn [v] [:seq v]))))
