@@ -1,6 +1,7 @@
 (ns shelving.parser-test
   "Tests of the clojure.spec(.alpha) datalog parser."
   (:require [clojure.spec.alpha :as s]
+            [clojure.spec.gen.alpha :as sgen]
             [clojure.test :as t]
             [clojure.test.check :as tc]
             [clojure.test.check.properties :as prop]
@@ -38,6 +39,19 @@
          :where [[?foo [::foo ::bar] ?b]
                  (:guard #(.endsWith % "foo") ?b)
                  (:not [?foo [::foo ::bar] "c"])]])))
+
+(t/deftest test-specs-generate
+  (doseq [s [::p/lvar ::p/lvar+spec? ::p/lvars
+             ::p/full-tuple ::p/terse-tuple ::p/tuple
+             #_::p/negation #_::p/guard
+             ::p/clause ::p/clauses
+
+             :shelving.query.parser.map/find
+             :shelving.query.parser.map/in
+             :shelving.query.parser.map/where
+             ]]
+    (t/testing (format "Attempting to generate examples of spec %s" s)
+      (t/is (sgen/sample (s/gen s))))))
 
 (t/deftest test-query-normal-form
   (t/testing "Seq and Map queries should round-trip through the same normal form."
