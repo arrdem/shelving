@@ -29,7 +29,7 @@
       (with-out-str
         (printf "%s [%s/%s](%s#L%s)\n"
                 heading
-                (ns-name (.ns v)) (.sym v)
+                (ns-name (.ns v)) (str/replace (name (.sym v)) #"\*" "\\\\*")
                 (relativize-path file) line)
         (doseq [params arglists]
           (printf " - `%s`\n" (cons (.sym v) params)))
@@ -68,7 +68,8 @@
                  buff* (-> buff
                            (str/replace var-doc-pattern
                                         (fn [[original heading name _ path line _body]]
-                                          (try (let [sym (symbol name)]
+                                          (try (let [name (str/replace name #"\\\*" "*")
+                                                     sym (symbol name)]
                                                  (require (symbol (namespace sym)))
                                                  (or (some-> sym resolve (document-var heading))
                                                      original))
