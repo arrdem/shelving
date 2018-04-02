@@ -28,7 +28,8 @@
         live-schema
         ;; Validate that the new schema supersets the old
         (if (and persisted-schema
-                 (not (superset? (:specs schema) (:specs persisted-schema))))
+                 (not (superset? (set (keys (:specs schema)))
+                                 (set (keys (:specs persisted-schema))))))
           ;; If we have a mismatch, throw
           (throw (ex-info "Persisted schema does not validate against loaded schema!"
                           {:persisted  persisted-schema
