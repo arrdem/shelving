@@ -143,14 +143,19 @@
   (value-rel-tests ->cfg)
   (record-rel-tests ->cfg))
 
-#_(defn persistence-tests [->cfg]
-    (let [;; Test round-tripping
-          _    (sh/close conn)
-          conn (sh/open cfg)
-          _    (t/is (= (sh/enumerate-specs conn) '(::foo ::baz)))
-          _    (t/is (= (sh/enumerate-spec conn ::foo) (list r1 r2)))
-          _    (t/is (= v1 (sh/get-spec conn ::foo r1)))
-          _    (t/is (= v2 (sh/get-spec conn ::foo r2)))]))
+(defn persistence-tests [->cfg]
+  (let [;; Test round-tripping
+        conn (sh/open (->cfg schema))
+        _ (sh/put-spec conn ::baz {:foo "hey" :bar "there"})
+        s1 (sh/enumerate-specs conn)
+        r1 (sh/enumerate-spec conn ::foo)
+        foo-id (last r1)
+        _ (sh/flush conn)
+        _ (sh/close conn)
+        conn (sh/open (->cfg schema))
+        _    (t/is (= s1 (sh/enumerate-specs conn)))
+        _    (t/is (= r1 (sh/enumerate-spec conn ::foo)))
+        _    (t/is (= "hey" (sh/get-spec conn ::foo foo-id)))]))
 
 (defn common-tests
   "Takes a ctor of fn [schema] -> cfg, applies it and opens the resulting config twice.
@@ -160,4 +165,4 @@
   (schema-migrate-tests ->cfg)
   (put-get-enumerate-example-tests ->cfg)
   (rel-tests ->cfg)
-  #_(persistence-tests ->cfg))
+  (persistence-tests ->cfg))
