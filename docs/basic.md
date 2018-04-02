@@ -7,14 +7,14 @@ configurations. These operations should be shared by all implementations.
 
 ## Connecting
 
-### [shelving.core/open](shelving/impl.clj#L31)
+### [shelving.core/open](shelving/impl.clj#L32)
  - `(open config)`
 
 Opens a shelf for reading or writing.
 
 Shelves must implement this method.
 
-### [shelving.core/flush](shelving/impl.clj#L43)
+### [shelving.core/flush](shelving/impl.clj#L44)
  - `(flush conn)`
 
 Flushes (commits) an open shelf.
@@ -23,7 +23,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.core/close](shelving/impl.clj#L57)
+### [shelving.core/close](shelving/impl.clj#L58)
  - `(close conn)`
 
 Closes an open shelf.
@@ -38,14 +38,14 @@ By default just flushes.
 
 
 
-### [shelving.core/enumerate-specs](shelving/impl.clj#L184)
+### [shelving.core/enumerate-specs](shelving/impl.clj#L185)
  - `(enumerate-specs conn)`
 
 Enumerates all the known specs.
 
 Shelves may provide alternate implementations of this method.
 
-### [shelving.core/put-spec](shelving/core.clj#L159)
+### [shelving.core/put-spec](shelving/core.clj#L187)
  - `(put-spec conn spec val)`
  - `(put-spec conn spec id val)`
 
@@ -59,7 +59,7 @@ It is an error to specify the ID when inserting into a "value" shelf.
 
 Shelves must implement [`#'shelving.impl/put-spec`](/docs/impl.md#shelvingimplput-spec), which backs this method.
 
-### [shelving.core/get-spec](shelving/core.clj#L185)
+### [shelving.core/get-spec](shelving/core.clj#L213)
  - `(get-spec conn spec record-id)`
  - `(get-spec conn spec record-id not-found)`
 
@@ -69,7 +69,7 @@ Recovers a record from a shelf according to spec and ID, returning the given `no
 
 Shelves must implement [`#'shelving.impl/get-spec`](/docs/impl.md#shelvingimplget-spec), which backs this method.
 
-### [shelving.core/has?](shelving/impl.clj#L110)
+### [shelving.core/has?](shelving/impl.clj#L111)
  - `(has? conn spec record-id)`
 
 Indicates whether a shelf has a record of a spec.
@@ -78,7 +78,7 @@ Returns `true` if and only if the shelf contains a record if the given spec and 
 
 Implementations may provide alternate implementations of this method.
 
-### [shelving.core/count-spec](shelving/impl.clj#L211)
+### [shelving.core/count-spec](shelving/impl.clj#L212)
  - `(count-spec conn spec)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -91,7 +91,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.core/enumerate-spec](shelving/impl.clj#L197)
+### [shelving.core/enumerate-spec](shelving/impl.clj#L198)
  - `(enumerate-spec conn spec)`
 
 Enumerates all the known records of a spec by UUID.
@@ -105,7 +105,7 @@ By default throws `me.arrdem.UnimplementedOperationException`.
 [Back to the index](/README.md#usage)
 
 
-### [shelving.core/put-rel](shelving/impl.clj#L129)
+### [shelving.core/put-rel](shelving/impl.clj#L130)
  - `(put-rel conn spec rel-id from-id to-id)`
 
 The "raw" put operation on relations.
@@ -118,7 +118,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.core/get-rel](shelving/impl.clj#L272)
+### [shelving.core/get-rel](shelving/impl.clj#L273)
  - `(get-rel conn rel-id spec id)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -137,39 +137,29 @@ Shelves may provide more efficient implementations of this method.
 
 [Back to the index](/README.md#usage)
 
-### [shelving.core/q](shelving/query.clj#L116)
+### [shelving.core/q](shelving/impl.clj#L300)
  - `(q conn query)`
 
-**UNSTABLE**: This API will probably change in the future
+Query compilation.
 
-Cribbing from Datomic's q operator here.  `find` is a sequence of symbols naming logic variables (by convention having the `?-` prefix) and `[:from spec lvar]` spec statements. `find` indicates what logic variables should be realized to values and produced as query results.
+Given a connection and a query datastructure, return a function of a connection and 0 or more positional logic variable bindings per the `:in` clause of the compiled query. Query functions return sequences of maps from logic variables to values. Each produced map must contain all lvars occurring in the query's `:find` clause.
 
-`where` is a sequence of rel "constraint" triples. Constraint triples must fit one of four forms: - `[lvar rel-id   lvar]` - `[lvar rel-id   const]` - `[lvar rel-spec lvar]` - `[lvar rel-spec const]`
+See the datalog documentation for a full description of the supported query form.
 
-for `lvar` existentially being a logic variable, `rel-id` being a valid `[spec spec]` directed relation pair, `rel-spec` being the spec of the right hand side of a relation; the left hand side being type inferred and const being any constant value for which there exists a meaningful content hash.
-
-`in` may be an inline or explicit sequence of logic variables, which may be annotated with a spec in the same `[:from <spec> <lvar>]` notation as supported by `find`. In parameters are compiled to arguments of the produced query function in the order the are given lexically.
-
-Evaluation precedes by attempting to unify the logic variables over the specified relations.
-
-Compiles and returns a new function of a connection and `in` parameters which will execute the compiled query.
-
-Query compilation is somewhat expensive so it's suggested that queries be compiled once and then parameterized repeatedly.
-
-### [shelving.core/q!](shelving/query.clj#L170)
- - `(q! conn query & args)`
+### [shelving.core/q!](shelving/core.clj#L290)
+ - `(q! conn query & lvar-bindings)`
 
 **UNSTABLE**: This API will probably change in the future
 
-Same as [`#'shelving.core/q`](/docs/basic.md#shelvingcoreq) but directly accepts arguments and executes the compiled query.
+Direct query execution, compiling as required.
 
-Queries are cached to avoid repeated compilation.
+Accepts a connection, a query, and a additional logic variable bindings. Caching compiled queries through `#'shelving.core/*query-cache*`, compiles the given query and executes it with the given logic variable bindings, returning a sequence of `:find` lvar maps.
 
 ## Connection Schemas
 
 [Back to the index](/README.md#usage)
 
-### [shelving.core/schema](shelving/impl.clj#L148)
+### [shelving.core/schema](shelving/impl.clj#L149)
  - `(schema conn)`
 
 Returns the schema record for a given connection.
@@ -180,7 +170,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.core/alter-schema](shelving/core.clj#L210)
+### [shelving.core/alter-schema](shelving/core.clj#L238)
  - `(alter-schema conn f & args)`
 
 Attempts alter the schema of a live connection.

@@ -2,70 +2,16 @@
 
 The searching API and helpers designed to support it.
 
-## [shelving.query/q\*\*\*\*](shelving/query.clj#L16)
- - `(q**** conn query)`
-
-**UNSTABLE**: This API will probably change in the future
-
-Published implementation detail.
-
-Given a query and a connection, builds and returns the dependency map on the query clauses which will be used to construct a scan plan.
-
-Intended only as a mechanism for inspecting query planning & execution.
-
-## [shelving.query/q\*\*\*](shelving/query.clj#L46)
- - `(q*** conn query)`
-
-**UNSTABLE**: This API will probably change in the future
-
-Published implementation detail.
-
-Given a query and a connection, builds and returns both the fully analyzed logic variable dependency structure, and the topological ordering  which will be used to drive query planning.
-
-Intended only as a mechanism for inspecting query planning & execution.
-
-## [shelving.query/q\*\*](shelving/query.clj#L82)
- - `(q** conn query)`
-
-**UNSTABLE**: This API will probably change in the future
-
-Published implementation detail.
-
-Given a query and a connection, builds and returns a sequence of plan "clauses" referred to as a query plan which can be compiled to a fn implementation.
-
-Intended only as a mechanism for inspecting query planning & execution.
-
-## [shelving.query/q\*](shelving/query.clj#L98)
- - `(q* conn query)`
-
-**UNSTABLE**: This API will probably change in the future
-
-Published implementation detail.
-
-Builds and returns the list form of a function implementing the given datalog query.
-
-Intended only as a mechanism for inspecting query planning & execution.
-
-## [shelving.query/q](shelving/query.clj#L116)
+## [shelving.core/q](shelving/impl.clj#L300)
  - `(q conn query)`
 
-**UNSTABLE**: This API will probably change in the future
+Query compilation.
 
-Cribbing from Datomic's q operator here.  `find` is a sequence of symbols naming logic variables (by convention having the `?-` prefix) and `[:from spec lvar]` spec statements. `find` indicates what logic variables should be realized to values and produced as query results.
+Given a connection and a query datastructure, return a function of a connection and 0 or more positional logic variable bindings per the `:in` clause of the compiled query. Query functions return sequences of maps from logic variables to values. Each produced map must contain all lvars occurring in the query's `:find` clause.
 
-`where` is a sequence of rel "constraint" triples. Constraint triples must fit one of four forms: - `[lvar rel-id   lvar]` - `[lvar rel-id   const]` - `[lvar rel-spec lvar]` - `[lvar rel-spec const]`
+See the datalog documentation for a full description of the supported query form.
 
-for `lvar` existentially being a logic variable, `rel-id` being a valid `[spec spec]` directed relation pair, `rel-spec` being the spec of the right hand side of a relation; the left hand side being type inferred and const being any constant value for which there exists a meaningful content hash.
-
-`in` may be an inline or explicit sequence of logic variables, which may be annotated with a spec in the same `[:from <spec> <lvar>]` notation as supported by `find`. In parameters are compiled to arguments of the produced query function in the order the are given lexically.
-
-Evaluation precedes by attempting to unify the logic variables over the specified relations.
-
-Compiles and returns a new function of a connection and `in` parameters which will execute the compiled query.
-
-Query compilation is somewhat expensive so it's suggested that queries be compiled once and then parameterized repeatedly.
-
-## [shelving.query/\*query-cache\*](shelving/query.clj#L157)
+## [shelving.core/\*query-cache\*](shelving/core.clj#L277)
 
 **UNSTABLE**: This API will probably change in the future
 
@@ -73,18 +19,18 @@ A cache of compiled queries.
 
 By default LRU caches 128 query implementations.
 
-Queries are indexed by content hash without any attempt to normalize them. Run the same [`#'shelving.query/q!`](/docs/queries.md#shelvingqueryq!) a bunch of times on related queries and this works. Spin lots of single use queries and you'll bust it.
+Queries are indexed by content hash without any attempt to normalize them. Run the same [`#'shelving.core/q!`](/docs/basic.md#shelvingcoreq!) a bunch of times on related queries and this works. Spin lots of single use queries and you'll bust it.
 
-## [shelving.query/q!](shelving/query.clj#L170)
- - `(q! conn query & args)`
+## [shelving.core/q!](shelving/core.clj#L290)
+ - `(q! conn query & lvar-bindings)`
 
 **UNSTABLE**: This API will probably change in the future
 
-Same as [`#'shelving.query/q`](/docs/queries.md#shelvingqueryq) but directly accepts arguments and executes the compiled query.
+Direct query execution, compiling as required.
 
-Queries are cached to avoid repeated compilation.
+Accepts a connection, a query, and a additional logic variable bindings. Caching compiled queries through `#'shelving.core/*query-cache*`, compiles the given query and executes it with the given logic variable bindings, returning a sequence of `:find` lvar maps.
 
-## [shelving.core/count-spec](shelving/impl.clj#L211)
+## [shelving.core/count-spec](shelving/impl.clj#L212)
  - `(count-spec conn spec)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -97,7 +43,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/count-rel](shelving/impl.clj#L255)
+## [shelving.core/count-rel](shelving/impl.clj#L256)
  - `(count-rel conn rel-id)`
 
 **UNSTABLE**: This API will probably change in the future

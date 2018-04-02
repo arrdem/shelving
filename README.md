@@ -244,7 +244,6 @@ We only have one, `1` but just for grins.
 
 We'll use the `q!` function, which both compiles and executes a query, producing results.
 
-
 ```clj
 (sh/q! *conn
   '[:find [:from ::foo ?foo]])
