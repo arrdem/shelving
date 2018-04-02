@@ -5,10 +5,10 @@
    :added   "0.1.0"}
   (:require [shelving.core :as sh]
             [shelving.impl :as impl]
-            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
-            [clojure.set :refer [superset?]]))
+            [clojure.set :refer [superset?]]
+            [shelving.schema :as schema]))
 
 ;; Configs open into shelves
 (defmethod impl/open ::config [{:keys [path schema load] :as s}]
@@ -21,7 +21,7 @@
           (-> path
               io/reader
               java.io.PushbackReader.
-              edn/read
+              schema/read-with-shelving-tags
               ((fn [v] (assert (map? v)) v)))
           {})
 

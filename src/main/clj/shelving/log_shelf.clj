@@ -8,10 +8,10 @@
    :license "Eclipse Public License 1.0",
    :added   "0.1.0"}
   (:require [clojure.core.match :refer [match]]
-            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [shelving.core :as sh]
-            [shelving.impl :as imp]))
+            [shelving.impl :as imp]
+            [shelving.schema :as schema]))
 
 ;; Configs open into shelves
 (defmethod imp/open ::config [{:keys [path schema load] :as s}]
@@ -23,7 +23,7 @@
                      (-> path
                          io/reader
                          java.io.PushbackReader.
-                         edn/read)
+                         schema/read-with-shelving-tags)
                      (list))
                    (cons [:schema schema])
                    atom)]
