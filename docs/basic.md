@@ -45,7 +45,7 @@ Enumerates all the known specs.
 
 Shelves may provide alternate implementations of this method.
 
-### [shelving.core/put-spec](shelving/core.clj#L187)
+### [shelving.core/put-spec](shelving/core.clj#L186)
  - `(put-spec conn spec val)`
  - `(put-spec conn spec id val)`
 
@@ -59,7 +59,7 @@ It is an error to specify the ID when inserting into a "value" shelf.
 
 Shelves must implement [`#'shelving.impl/put-spec`](/docs/impl.md#shelvingimplput-spec), which backs this method.
 
-### [shelving.core/get-spec](shelving/core.clj#L213)
+### [shelving.core/get-spec](shelving/core.clj#L212)
  - `(get-spec conn spec record-id)`
  - `(get-spec conn spec record-id not-found)`
 
@@ -146,10 +146,8 @@ Given a connection and a query datastructure, return a function of a connection 
 
 See the datalog documentation for a full description of the supported query form.
 
-### [shelving.core/q!](shelving/core.clj#L290)
+### [shelving.core/q!](shelving/core.clj#L289)
  - `(q! conn query & lvar-bindings)`
-
-**UNSTABLE**: This API will probably change in the future
 
 Direct query execution, compiling as required.
 
@@ -170,7 +168,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.core/alter-schema](shelving/core.clj#L238)
+### [shelving.core/alter-schema](shelving/core.clj#L237)
  - `(alter-schema conn f & args)`
 
 Attempts alter the schema of a live connection.

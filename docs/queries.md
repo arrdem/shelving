@@ -11,7 +11,7 @@ Given a connection and a query datastructure, return a function of a connection 
 
 See the datalog documentation for a full description of the supported query form.
 
-## [shelving.core/\*query-cache\*](shelving/core.clj#L277)
+## [shelving.core/\*query-cache\*](shelving/core.clj#L276)
 
 **UNSTABLE**: This API will probably change in the future
 
@@ -21,10 +21,8 @@ By default LRU caches 128 query implementations.
 
 Queries are indexed by content hash without any attempt to normalize them. Run the same [`#'shelving.core/q!`](/docs/basic.md#shelvingcoreq!) a bunch of times on related queries and this works. Spin lots of single use queries and you'll bust it.
 
-## [shelving.core/q!](shelving/core.clj#L290)
+## [shelving.core/q!](shelving/core.clj#L289)
  - `(q! conn query & lvar-bindings)`
-
-**UNSTABLE**: This API will probably change in the future
 
 Direct query execution, compiling as required.
 

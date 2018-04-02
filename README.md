@@ -327,7 +327,7 @@ However when developing applications, users should prefer to compile their queri
 - [Basic API](/docs/basic.md) - The core read and write API exposed to users.
 - [Shelf Schema API](/docs/schema.md) - Specs describe the structure of values, but must be declared in a schema to associate semantics with that structure.
 - [Shelf Query API](/docs/queries.md) - A Datalog query compiler & engine.
-  - [shelving.query/q](/docs/queries.md#shelvingqueryq)
+  - [shelving.core/q](/docs/queries.md#shelvingcoreq)
 - [Implementer's API](/docs/impl.md) - The API between Shelving and stores.
 
 See also the [Grimoire v3 case study](/src/dev/clj/grimoire.clj) which motivates much of this work.
