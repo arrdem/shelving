@@ -89,7 +89,8 @@
                          symbols (re-seq #"(?:\n## \[)(?<namespace>[^/]*?)/(?<name>[^\]]+)\]" buff)]
             [_ ns name] symbols
             :when       (.contains ns "shelving.")
-            :let        [the-sym (symbol ns name)]]
+            :let        [name (str/replace name #"\\\*" "\\*")
+                         the-sym (symbol ns name)]]
       (require (symbol (namespace the-sym)))
       (t/is (find-var the-sym)
             (format "In file %s, couldn't find mentioned var %s/%s" f ns name)))))
