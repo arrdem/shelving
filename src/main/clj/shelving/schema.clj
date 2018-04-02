@@ -10,7 +10,8 @@
   {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
-  (:require [clojure.spec.alpha :as s]
+  (:require [clojure.edn :as edn]
+            [clojure.spec.alpha :as s]
             [clojure.tools.logging :as log]
             [hasch.core :refer [uuid]]
             [hasch.benc :refer [magics PHashCoercion -coerce
@@ -70,6 +71,15 @@
                        :spec    spec
                        :record? record?}
                       e)))))
+
+(defn read-with-shelving-tags
+  "provide shelving reader tags for the edn reader, useful for reading serialized
+  shelves"
+  {:categories #{::schema}
+   :added "0.0.0"}
+  [stream]
+  (edn/read {:readers {'shelving/id read-id}}
+            stream))
 
 (defn has-spec?
   "Helper used for preconditions."
@@ -250,7 +260,7 @@
   "Helper for use in checking compatibility between database persistable specs.
   Because proving equivalence on specs is basically impossible, we'll
   start with equality.
-  
+
   Returns a sequence of problems encountered while checking
   compatibility."
   {:categories #{::schema}
