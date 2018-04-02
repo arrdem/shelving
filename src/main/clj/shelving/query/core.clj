@@ -1,17 +1,21 @@
-(ns shelving.query
-  "A Datalog query engine over Shelves."
+(ns shelving.query.core
+  "The core of a (very generic) implementation of Datalog over the core
+  Shelving API.
+
+  These details are presented for ease of debugging, and should not be
+  relied on by users although they may be instructive to those
+  interested in writing their own datalog query implementations.
+
+  Users should prefer the published API of `#'shelving.core/q`."
   {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
-  (:require [shelving.impl :as impl]
-            [shelving.schema :as schema]
+  (:require [shelving.schema :as schema]
             [shelving.query.parser :as parser]
             [shelving.query.analyzer :as analyzer]
             [shelving.query.compiler :as compiler]
             [shelving.query.planner :as planner]
-            [clojure.spec.alpha :as s]
-            [clojure.core.cache :as cache]
-            [hasch.core :refer [uuid]]))
+            [clojure.spec.alpha :as s]))
 
 (defn q****
   "Published implementation detail.
@@ -69,8 +73,8 @@
                         (map (fn [[k {:keys [dependencies]
                                       :or   {dependencies #{}}}]]
                                [k dependencies]) %)
-                        (into (sorted-map-by #(as-> (compare (impl/count-spec conn %2)
-                                                             (impl/count-spec conn %1)) $
+                        (into (sorted-map-by #(as-> (compare (#'shelving.impl/count-spec conn %2)
+                                                             (#'shelving.impl/count-spec conn %1)) $
                                                 (if (= $ 0)
                                                   (compare %1 %2) $)))
                               %)
@@ -114,71 +118,12 @@
             :fn   (eval form)})))
 
 (defn q
-  "Cribbing from Datomic's q operator here.
-  
-  `find` is a sequence of symbols naming logic variables (by
-  convention having the `?-` prefix) and `[:from spec lvar]` spec
-  statements. `find` indicates what logic variables should be realized
-  to values and produced as query results.
+  "Published implementation detail.
 
-  `where` is a sequence of rel \"constraint\" triples. Constraint
-  triples must fit one of four forms:
-   - `[lvar rel-id   lvar]`
-   - `[lvar rel-id   const]`
-   - `[lvar rel-spec lvar]`
-   - `[lvar rel-spec const]`
-
-  for `lvar` existentially being a logic variable, `rel-id` being a
-  valid `[spec spec]` directed relation pair, `rel-spec` being the
-  spec of the right hand side of a relation; the left hand side being
-  type inferred and const being any constant value for which there
-  exists a meaningful content hash.
-
-  `in` may be an inline or explicit sequence of logic variables, which
-  may be annotated with a spec in the same `[:from <spec> <lvar>]`
-  notation as supported by `find`. In parameters are compiled to
-  arguments of the produced query function in the order the are given
-  lexically.
-
-  Evaluation precedes by attempting to unify the logic variables over
-  the specified relations.
-
-  Compiles and returns a new function of a connection and `in`
-  parameters which will execute the compiled query.
-
-  Query compilation is somewhat expensive so it's suggested that
-  queries be compiled once and then parameterized repeatedly."
+  Compiles the query, using the other `q*+` vars, returning the
+  compiled query function."
   {:stability  :stability/unstable
-   :added      "0.0.0"}
+   :added      "0.0.0"
+   :arglists   (:arglists (meta #'q**))}
   [conn query]
-  (let [{:keys [fn in] :as query} (q* conn query)]
-    fn))
-
-(def ^{:dynamic    true
-       :stability  :stability/unstable
-       :added      "0.0.0"}
-  *query-cache*
-  "A cache of compiled queries.
-
-  By default LRU caches 128 query implementations.
-
-  Queries are indexed by content hash without any attempt to normalize
-  them. Run the same `#'q!` a bunch of times on related queries and this
-  works. Spin lots of single use queries and you'll bust it."
-  (atom (cache/lru-cache-factory {} :threshold 128)))
-
-(defn q!
-  "Same as `#'q` but directly accepts arguments and executes the
-  compiled query.
-
-  Queries are cached to avoid repeated compilation."
-  {:stability  :stability/unstable
-   :added      "0.0.0"}
-  [conn query & args]
-  (let [query-id (uuid (s/conform ::parser/datalog query))]
-    (apply (locking *query-cache*
-             (get (if (cache/has? @*query-cache* query-id)
-                    (swap! *query-cache* cache/hit query-id)
-                    (swap! *query-cache* cache/miss query-id (q conn query)))
-                  query-id))
-           conn args)))
+  (:fn (q* conn query)))

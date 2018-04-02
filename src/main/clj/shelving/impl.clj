@@ -6,9 +6,10 @@
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
   (:refer-clojure :exclude [flush get])
-  (:require [shelving.schema :as schema]
-            [shelving.spec.walk :as s.w]
-            [clojure.tools.logging :as log])
+  (:require [clojure.tools.logging :as log]
+            [clojure.spec.alpha :as s]
+            [hasch.core :refer [uuid]]
+            [shelving.schema :as schema])
   (:import me.arrdem.UnimplementedOperationException))
 
 (defn- dx
@@ -296,32 +297,42 @@
                       #(when (= id (second %)) (first %)))]
     (keep f (enumerate-rel conn real-rel-id))))
 
-(defn decompose
-  "Given a schema, a spec in the schema, a record ID and the record as a
-  value, decompose the record into its direct descendants and relations
-  thereto."
-  {:stability  :stability/stable
-   :added      "0.0.0"}
-  [schema spec id val]
-  (let [acc! (volatile! [])
-        ids (volatile! [])]
-    (log/debug id (pr-str val))
-    (binding [s.w/*walk-through-aliases* nil
-              s.w/*walk-through-multis*  nil]
-      (let [val* (s.w/walk-with-spec
-                  (fn [subspec subval]
-                    (vswap! ids conj
-                            (if (= subspec spec)
-                              (schema/as-id spec id)
-                              (schema/id-for-record schema subspec subval)))
-                    subval)
-                  (fn [subspec subval]
-                    (let [id* (last @ids)]
-                      (vswap! ids pop)
-                      (when (qualified-keyword? subspec)
-                        (vswap! acc! conj [:record* subspec id* subval])
-                        (when (not= spec subspec)
-                          (vswap! acc! conj [:rel [spec subspec] id id*])))
-                      id*))
-                  spec val)]
-        @acc!))))
+(defmulti q
+  "Query compilation.
+
+  Given a connection and a query datastructure, return a function of a
+  connection and 0 or more positional logic variable bindings per the
+  `:in` clause of the compiled query. Query functions return sequences
+  of maps from logic variables to values. Each produced map must
+  contain all lvars occurring in the query's `:find` clause.
+
+  See the datalog documentation for a full description of the
+  supported query form."
+  {:categories #{:shelving.core/impl :shelving.core/query}
+   :stability :stability/stable
+   :added     "0.0.0"
+   :arglists  '([conn query])}
+  #'dx)
+
+(defmethod q :default [conn query]
+  (require 'shelving.query.core)
+  ((resolve 'shelving.query.core/q) conn query))
+
+(defmulti fingerprint-query
+  "Query caching implementation detail.
+
+  Function of a connection and a query which returns a unique
+  identifier for the compilation of that pair."
+  {:stability :stability/unstable
+   :added     "0.0.0"
+   :arglists  '([conn query])}
+  #'dx)
+
+(defn- get-multi-dispatch-fingerprint [^clojure.lang.MultiFn multifn args]
+  ;; FIXME: doesn't handle :default, or dispatch preference correctly
+  (hash (.getMethod multifn (apply (.dispatchFn multifn) args))))
+
+(defmethod fingerprint-query :default [conn query]
+  (require 'shelving.query.parser)
+  (uuid [(get-multi-dispatch-fingerprint q [conn query])
+         (s/conform :shelving.query.parser/datalog query)]))

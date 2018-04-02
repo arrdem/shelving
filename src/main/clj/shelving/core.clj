@@ -5,21 +5,19 @@
   horizontally to a wall or in a frame, for supporting objects.
 
   Shelves are a structured store intended for use with linear scans
-  for IDs and random point read/write. Shelves are appropriate only
-  for use when the read and write load is so small that flushing the
-  entire store every time is an acceptable cost compared to the
-  complexity of a more traditional storage layer or database."
+  for IDs and random point read/write on records / values."
   {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
-  (:refer-clojure :exclude [flush get])
+  (:refer-clojure :exclude [flush])
   (:require [clojure.core.match :refer [match]]
             [clojure.spec.alpha :as s]
             [clojure.tools.logging :as log]
+            [clojure.core.cache :as cache]
             [potemkin :refer [import-vars]]
             [shelving.impl :as impl]
             [shelving.schema :as schema]
-            shelving.query
+            [shelving.spec.walk :as s.w]
             [shelving.impl :as imp])
   (:import [me.arrdem.shelving
             MissingRelException
@@ -68,13 +66,14 @@
  [shelving.impl
   ;; FIXME: add transactions / pipeline support
   open close flush
-  ;; `put` and `get` have wrappers in this ns.
+  ;; `put` and `get` have wrappers in this ns, so we don't import them
   has?
   schema
   enumerate-specs enumerate-rels
   count-spec count-rel
   enumerate-spec enumerate-rel
-  put-rel get-rel]
+  put-rel get-rel
+  q]
  [shelving.schema
   empty-schema value-spec record-spec
   has-spec? is-value? is-record?
@@ -84,9 +83,7 @@
   check-schema
   check-schemas check-schemas!
   spec-rel has-rel? is-alias? resolve-alias
-  id? ->id]
- [shelving.query
-  q q!])
+  id? ->id])
 
 (declare alter-schema)
 
@@ -116,6 +113,36 @@
               (ensure-spec! conn to)
               (alter-schema conn spec-rel rel)))))
 
+(defn- decompose
+  "Given a schema, a spec in the schema, a record ID and the record as a
+  value, decompose the record into its direct descendants and relations
+  thereto."
+  {:stability  :stability/stable
+   :added      "0.0.0"}
+  [schema spec id val]
+  (let [acc! (volatile! [])
+        ids (volatile! [])]
+    (log/debug id (pr-str val))
+    (binding [s.w/*walk-through-aliases* nil
+              s.w/*walk-through-multis*  nil]
+      (let [val* (s.w/walk-with-spec
+                  (fn [subspec subval]
+                    (vswap! ids conj
+                            (if (= subspec spec)
+                              (schema/as-id spec id)
+                              (schema/id-for-record schema subspec subval)))
+                    subval)
+                  (fn [subspec subval]
+                    (let [id* (last @ids)]
+                      (vswap! ids pop)
+                      (when (qualified-keyword? subspec)
+                        (vswap! acc! conj [:record* subspec id* subval])
+                        (when (not= spec subspec)
+                          (vswap! acc! conj [:rel [spec subspec] id id*])))
+                      id*))
+                  spec val)]
+        @acc!))))
+
 ;; FIXME (arrdem 2018-03-02):
 ;;   This recursively inserts sub-structures, but still inserts all structures fully formed.
 ;;   It should be able to insert only "denormalized" structures.
@@ -136,7 +163,7 @@
                          (is-value? schema* spec*))
                   ;; skip the write
                   (recur queue* dirty?)
-                  (recur (into queue* (impl/decompose schema* spec* id* val*))
+                  (recur (into queue* (decompose schema* spec* id* val*))
                          (conj dirty? id*))))
 
               ;; Case of an already decomposed record
@@ -245,3 +272,34 @@
         ;; this throws, we're kinda shit out of luck here.
         (do (impl/set-schema conn schema*)
             schema*)))))
+
+(def ^{:dynamic    true
+       :stability  :stability/unstable
+       :added      "0.0.0"}
+  *query-cache*
+  "A cache of compiled queries.
+
+  By default LRU caches 128 query implementations.
+
+  Queries are indexed by content hash without any attempt to normalize
+  them. Run the same `#'q!` a bunch of times on related queries and this
+  works. Spin lots of single use queries and you'll bust it."
+  (atom (cache/lru-cache-factory {} :threshold 128)))
+
+(defn q!
+  "Direct query execution, compiling as required.
+
+  Accepts a connection, a query, and a additional logic variable
+  bindings. Caching compiled queries through `#'*query-cache*`,
+  compiles the given query and executes it with the given logic
+  variable bindings, returning a sequence of `:find` lvar maps."
+  {:stability :stability/stable
+   :added      "0.0.0"}
+  [conn query & lvar-bindings]
+  (let [query-id (impl/fingerprint-query conn query)]
+    (apply (get (swap! *query-cache*
+                       #(if (cache/has? % query-id)
+                          (cache/hit % query-id)
+                          (cache/miss % query-id (q conn query))))
+                query-id)
+           conn lvar-bindings)))

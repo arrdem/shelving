@@ -1,8 +1,7 @@
 (ns shelving.query-test
   (:require [clojure.spec.alpha :as s]
             [clojure.test :as t]
-            [shelving.core :as sh]
-            [shelving.query :refer [q q! q* q** q*** q****]]
+            [shelving.core :as sh :refer [q q!]]
             [shelving.log-shelf :refer [->LogShelf]]))
 
 (s/def ::foo string?)
