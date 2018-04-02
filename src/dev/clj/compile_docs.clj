@@ -1,7 +1,6 @@
 (ns compile-docs
   "A quick hack for rebuilding docs containing manually situated var references."
-  (:require [shelving.core :as sh]
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log])
   (:import java.io.File))
@@ -93,4 +92,4 @@
   [& args]
   (recompile-docs
    (filter #(.endsWith (.getPath ^File %) ".md")
-           (file-seq (io/file "docs/")))))
+           (cons (io/file "README.md") (file-seq (io/file "docs/"))))))
