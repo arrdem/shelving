@@ -6,7 +6,7 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.tools.logging :as log]
             [clojure.core.match :refer [match]]
-            [shelving.spec :refer [keys-as-map]]))
+            [shelving.spec.core :refer [keys-as-map]]))
 
 (declare walk-with-spec)
 

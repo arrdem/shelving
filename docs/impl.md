@@ -34,26 +34,26 @@ No fundamental connection behavior is specified or expected.
 `open` exists to differentiate between a connection's description and an active connection.
 `close` is expected to close an open connection, freeing any related resources on both the client and any implementation or server.
 
-### [shelving.impl/open](shelving/impl.clj#L32)
+### [shelving.impl/open](shelving/impl.clj#L37)
  - `(open config)`
 
 Opens a shelf for reading or writing.
 
 Shelves must implement this method.
 
-### [shelving.impl/flush](shelving/impl.clj#L44)
+### [shelving.impl/flush](shelving/impl.clj#L53)
  - `(flush conn)`
 
-Flushes (commits) an open shelf.
+Flushes (commits) an open shelf. Returns `nil`.
 
 Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/close](shelving/impl.clj#L58)
+### [shelving.impl/close](shelving/impl.clj#L71)
  - `(close conn)`
 
-Closes an open shelf.
+Closes an open shelf. Returns `nil`.
 
 Shelves may implement this method.
 
@@ -67,7 +67,7 @@ The database schema describes what kinds of values it expects to store.
 Clients MAY NOT write to relations or specs which have not been entered into the schema.
 [`#'shelving.core/put-spec`](/docs/basic.md#shelvingcoreput-spec), the intentional write API, has support for automatically manipulating and extending the store's schema.
 
-### [shelving.impl/schema](shelving/impl.clj#L149)
+### [shelving.impl/schema](shelving/impl.clj#L192)
  - `(schema conn)`
 
 Returns the schema record for a given connection.
@@ -78,7 +78,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/set-schema](shelving/impl.clj#L165)
+### [shelving.impl/set-schema](shelving/impl.clj#L212)
  - `(set-schema conn schema)`
 
 Attempts to alter the live schema of the connection by applying the given transformer function to the current schema state with any additional arguments.
@@ -101,14 +101,14 @@ The counting operation is used to attempt to optimize query implementations.
 
 Deletion of spec entries is not supported.
 
-### [shelving.impl/enumerate-specs](shelving/impl.clj#L185)
+### [shelving.impl/enumerate-specs](shelving/impl.clj#L236)
  - `(enumerate-specs conn)`
 
 Enumerates all the known specs.
 
 Shelves may provide alternate implementations of this method.
 
-### [shelving.impl/enumerate-spec](shelving/impl.clj#L198)
+### [shelving.impl/enumerate-spec](shelving/impl.clj#L254)
  - `(enumerate-spec conn spec)`
 
 Enumerates all the known records of a spec by UUID.
@@ -117,7 +117,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/count-spec](shelving/impl.clj#L212)
+### [shelving.impl/count-spec](shelving/impl.clj#L273)
  - `(count-spec conn spec)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -130,7 +130,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/put-spec](shelving/impl.clj#L73)
+### [shelving.impl/put-spec](shelving/impl.clj#L92)
  - `(put-spec conn spec id val)`
 
 The "raw" put operation on values. Inserts a fully decomposed value (tuple) into the designated spec, returning the ID at which it was inserted if an ID was not provided.
@@ -143,13 +143,13 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/get-spec](shelving/impl.clj#L92)
+### [shelving.impl/get-spec](shelving/impl.clj#L117)
  - `(get-spec conn spec record-id)`
  - `(get-spec conn spec record-id not-found)`
 
 Fetches a single tuple, being part of a record, from a shelf by its spec and ID.
 
-Returns the record if it exists, otherwise returning the user-provided `not-found` value, taken to be `nil` by default.
+Returns the record if it exists. Otherwise returns the `not-found` value, taken to be `nil` by default.
 
 Implementation detail of `null`, which should be preferred by users. This method is an unprotected implementation detail not for general use.
 
@@ -157,7 +157,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/has?](shelving/impl.clj#L111)
+### [shelving.impl/has?](shelving/impl.clj#L142)
  - `(has? conn spec record-id)`
 
 Indicates whether a shelf has a record of a spec.
@@ -175,14 +175,14 @@ Like the values themselves, the relations can be read from, written to and count
 
 Deletion of relations is not supported.
 
-### [shelving.impl/enumerate-rels](shelving/impl.clj#L229)
+### [shelving.impl/enumerate-rels](shelving/impl.clj#L294)
  - `(enumerate-rels conn)`
 
 Enumerates all the known rels by ID (their `[from-spec to-spec]` pair). Includes aliases.
 
 Shelves may provide alternate implementation of this method.
 
-### [shelving.impl/enumerate-rel](shelving/impl.clj#L242)
+### [shelving.impl/enumerate-rel](shelving/impl.clj#L312)
  - `(enumerate-rel conn rel-id)`
 
 Enumerates the `(from-id to-id)` pairs of the given rel(ation).
@@ -191,7 +191,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/count-rel](shelving/impl.clj#L256)
+### [shelving.impl/count-rel](shelving/impl.clj#L331)
  - `(count-rel conn rel-id)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -204,12 +204,14 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/put-rel](shelving/impl.clj#L130)
+### [shelving.impl/put-rel](shelving/impl.clj#L167)
  - `(put-rel conn spec rel-id from-id to-id)`
 
 The "raw" put operation on relations.
 
 Inserts a `[from rel to]` triple into the data store unconditionally.
+
+Returns `nil`, throwing if it fails.
 
 Users should universally prefer `null`. This method is an unprotected implementation detail not for general use.
 
@@ -217,7 +219,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-### [shelving.impl/get-rel](shelving/impl.clj#L273)
+### [shelving.impl/get-rel](shelving/impl.clj#L355)
  - `(get-rel conn rel-id spec id)`
 
 **UNSTABLE**: This API will probably change in the future

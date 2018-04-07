@@ -29,8 +29,7 @@
   {:stability  :stability/unstable
    :added      "0.0.0"}
   [conn query]
-  {:pre [(s/valid? ::parser/datalog query)]}
-  (as-> (s/conform ::parser/datalog query) %
+  (as-> (parser/parse query) %
     ;; Collect initially available spec information
     (analyzer/normalize-find-clauses %)
     (analyzer/normalize-in-clauses %)

@@ -17,15 +17,12 @@
             [hasch.benc :refer [magics PHashCoercion -coerce
                                 digest coerce-seq xor-hashes encode-safe]]
             [hasch.platform :refer [encode]]
-            [shelving.spec :as ss]
+            [shelving.spec.core :as ss]
             [shelving.spec.walk :as s.w])
   (:import java.nio.ByteBuffer
            java.util.UUID
-           me.arrdem.UnimplementedOperationException
-           me.arrdem.shelving.RecordIdentifier)
-  (:import java.util.UUID
            clojure.lang.Keyword
-           java.io.Writer
+           me.arrdem.UnimplementedOperationException
            me.arrdem.shelving.RecordIdentifier))
 
 ;; Intentional interface for schemas

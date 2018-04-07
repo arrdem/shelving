@@ -1,4 +1,4 @@
-(ns shelving.spec
+(ns shelving.spec.core
   "Tools for working with `clojure.spec(.alpha)`."
   {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
    :license "Eclipse Public License 1.0",

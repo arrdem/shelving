@@ -9,7 +9,8 @@
   (:require [clojure.tools.logging :as log]
             [clojure.spec.alpha :as s]
             [hasch.core :refer [uuid]]
-            [shelving.schema :as schema])
+            [shelving.schema :as schema]
+            [shelving.specs.core :as specs])
   (:import me.arrdem.UnimplementedOperationException))
 
 (defn- dx
@@ -29,6 +30,10 @@
 
 ;; Intentional interface for shelves
 ;;--------------------------------------------------------------------------------------------------
+(s/fdef open
+  :args (s/cat :config ::specs/config)
+  :ret ::specs/conn)
+
 (defmulti open
   "Opens a shelf for reading or writing.
 
@@ -41,8 +46,12 @@
 
 (required! open)
 
+(s/fdef flush
+  :args (s/cat :conn ::specs/conn)
+  :ret  nil?)
+
 (defmulti flush
-  "Flushes (commits) an open shelf.
+  "Flushes (commits) an open shelf. Returns `nil`.
 
   Shelves must implement this method.
 
@@ -55,8 +64,12 @@
 
 (required! flush)
 
+(s/fdef close
+  :arsg (s/cat :conn ::specs/conn)
+  :ret nil?)
+
 (defmulti close
-  "Closes an open shelf.
+  "Closes an open shelf. Returns `nil`.
 
   Shelves may implement this method.
 
@@ -69,6 +82,12 @@
 
 (defmethod close :default [t]
   (flush t))
+
+(s/fdef put-spec
+  :args (s/cat :conn ::specs/conn
+               :spec ::specs/spec-id
+               :id ::specs/some-id
+               :val  any?))
 
 (defmulti put-spec
   "The \"raw\" put operation on values. Inserts a fully decomposed value (tuple) into the designated
@@ -89,11 +108,17 @@
    :arglists   '([conn spec id val])}
   #'dx)
 
+(s/fdef get-spec
+  :args (s/cat :conn ::specs/conn
+               :spec ::specs/spec-id
+               :id ::specs/some-id
+               :not-found (s/? any?)))
+
 (defmulti get-spec
   "Fetches a single tuple, being part of a record, from a shelf by its spec and ID.
 
-  Returns the record if it exists, otherwise returning the user-provided `not-found` value, taken to
-  be `nil` by default.
+  Returns the record if it exists.
+  Otherwise returns the `not-found` value, taken to be `nil` by default.
 
   Implementation detail of `#'shelving.core/get-spec`, which should be preferred by users. This
   method is an unprotected implementation detail not for general use.
@@ -107,6 +132,12 @@
    :arglists   '([conn spec record-id]
                  [conn spec record-id not-found])}
   #'dx)
+
+(s/fdef has?
+  :args (s/cat :conn ::specs/conn
+               :spec ::specs/spec-id
+               :record-id ::specs/some-id)
+  :ret boolean?)
 
 (defmulti has?
   "Indicates whether a shelf has a record of a spec.
@@ -127,10 +158,18 @@
 
 (required! put-spec)
 
+(s/fdef put-rel
+   :ars (s/cat :conn ::specs/conn
+               :spec ::specs/rel-id
+               :from-id ::specs/some-id
+               :to-id ::specs/some-id))
+
 (defmulti put-rel
   "The \"raw\" put operation on relations.
 
   Inserts a `[from rel to]` triple into the data store unconditionally.
+
+  Returns `nil`, throwing if it fails.
 
   Users should universally prefer `#'shelving.core/put-spec`. This method is an unprotected
   implementation detail not for general use.
@@ -145,6 +184,10 @@
   #'dx)
 
 (required! put-rel)
+
+(s/fdef schema
+   :ars (s/cat :conn ::specs/conn)
+   :ret ::specs/schema)
 
 (defmulti schema
   "Returns the schema record for a given connection.
@@ -161,6 +204,10 @@
   #'dx)
 
 (required! schema)
+
+(s/fdef schema
+   :ars (s/cat :conn ::specs/conn)
+   :ret ::specs/schema)
 
 (defmulti set-schema
   "Attempts to alter the live schema of the connection by applying the given transformer function to
@@ -182,6 +229,10 @@
 
 (required! set-schema)
 
+(s/fdef enumerate-specs
+  :args (s/cat :conn ::specs/conn)
+  :ret (s/coll-of ::specs/spec-id))
+
 (defmulti enumerate-specs
   "Enumerates all the known specs.
 
@@ -194,6 +245,11 @@
 
 (defmethod enumerate-specs :default [conn]
   (-> conn schema :specs keys))
+
+(s/fdef enumerate-spec
+  :args (s/cat :conn ::specs/conn
+               :spec ::specs/spec-id)
+  :ret (s/coll-of ::specs/record-id))
 
 (defmulti enumerate-spec
   "Enumerates all the known records of a spec by UUID.
@@ -208,6 +264,11 @@
   #'dx)
 
 (required! enumerate-spec)
+
+(s/fdef enumerate-spec
+  :args (s/cat :conn ::specs/conn
+               :spec ::specs/spec-id)
+  :ret nat-int?)
 
 (defmulti count-spec
   "Returns an upper bound on the cardinality of a given spec.
@@ -226,6 +287,10 @@
 
 (required! count-spec)
 
+(s/fdef enumerate-rels
+  :args (s/cat :conn ::specs/conn)
+  :ret (s/coll-of ::specs/rel-id))
+
 (defmulti enumerate-rels
   "Enumerates all the known rels by ID (their `[from-spec to-spec]` pair). Includes aliases.
 
@@ -238,6 +303,11 @@
 
 (defmethod enumerate-rels :default [conn]
   (-> conn schema :rels keys))
+
+(s/fdef enumerate-rel
+  :args (s/cat :conn ::specs/conn
+               :rel-id ::specs/rel-id)
+  :ret (s/coll-of ::specs/rel-tuple))
 
 (defmulti enumerate-rel
   "Enumerates the `(from-id to-id)` pairs of the given rel(ation).
@@ -252,6 +322,11 @@
   #'dx)
 
 (required! enumerate-rel)
+
+(s/fdef count-rel
+  :args (s/cat :conn ::specs/conn
+               :rel-id ::specs/rel-id)
+  :ret nat-int?)
 
 (defmulti count-rel
   "Returns an upper bound on the cardinality of a given relation.
@@ -269,6 +344,13 @@
   #'dx)
 
 (required! count-rel)
+
+(s/fdef get-rel
+  :args (s/cat :conn ::specs/conn
+               :rel-id ::specs/rel-id
+               :spec ::specs/spec-id
+               :id ::specs/some-id)
+  :ret (s/coll-of ::specs/some-id))
 
 (defmulti get-rel
   "Given a rel(ation) and the ID of an record of the from-rel spec,

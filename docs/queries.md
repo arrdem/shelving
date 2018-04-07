@@ -2,7 +2,7 @@
 
 The searching API and helpers designed to support it.
 
-## [shelving.core/q](shelving/impl.clj#L300)
+## [shelving.core/q](shelving/impl.clj#L382)
  - `(q conn query)`
 
 Query compilation.
@@ -11,7 +11,7 @@ Given a connection and a query datastructure, return a function of a connection 
 
 See the datalog documentation for a full description of the supported query form.
 
-## [shelving.core/\*query-cache\*](shelving/core.clj#L276)
+## [shelving.core/\*query-cache\*](shelving/core.clj#L273)
 
 **UNSTABLE**: This API will probably change in the future
 
@@ -21,14 +21,14 @@ By default LRU caches 128 query implementations.
 
 Queries are indexed by content hash without any attempt to normalize them. Run the same [`#'shelving.core/q!`](/docs/basic.md#shelvingcoreq!) a bunch of times on related queries and this works. Spin lots of single use queries and you'll bust it.
 
-## [shelving.core/q!](shelving/core.clj#L289)
+## [shelving.core/q!](shelving/core.clj#L286)
  - `(q! conn query & lvar-bindings)`
 
 Direct query execution, compiling as required.
 
 Accepts a connection, a query, and a additional logic variable bindings. Caching compiled queries through `#'shelving.core/*query-cache*`, compiles the given query and executes it with the given logic variable bindings, returning a sequence of `:find` lvar maps.
 
-## [shelving.core/count-spec](shelving/impl.clj#L212)
+## [shelving.core/count-spec](shelving/impl.clj#L273)
  - `(count-spec conn spec)`
 
 **UNSTABLE**: This API will probably change in the future
@@ -41,7 +41,7 @@ Shelves must implement this method.
 
 By default throws `me.arrdem.UnimplementedOperationException`.
 
-## [shelving.core/count-rel](shelving/impl.clj#L256)
+## [shelving.core/count-rel](shelving/impl.clj#L331)
  - `(count-rel conn rel-id)`
 
 **UNSTABLE**: This API will probably change in the future

@@ -15,6 +15,7 @@
             [clojure.tools.logging :as log]
             [clojure.core.cache :as cache]
             [potemkin :refer [import-vars]]
+            [shelving.specs.core :as specs]
             [shelving.impl :as impl]
             [shelving.schema :as schema]
             [shelving.spec.walk :as s.w]
@@ -24,41 +25,6 @@
             MissingSpecException
             SchemaMigrationException
             RecordIdentifier]))
-
-;; Data specs
-;;--------------------------------------------------------------------------------------------------
-(s/def ::spec-id
-  qualified-keyword?)
-
-(s/def :shelving.core.spec/type
-  #{::spec})
-
-(s/def :shelving.core.spec/record?
-  boolean?)
-
-(s/def :shelving.core.spec/rels
-  (s/coll-of #(s/valid? ::rel-id %)))
-
-(s/def ::spec
-  (s/keys :req-un [:shelving.core.spec/type
-                   :shelving.core.spec/record?
-                   :shelving.core.spec/rels]))
-
-(s/def :shelving.core.schema/type #{::schema})
-
-(s/def :shelving.core.schema/specs
-  (s/map-of #(s/valid? ::spec-id %) #(s/valid? ::spec %)))
-
-(s/def :shelving.core.schema/rels
-  (s/map-of #(s/valid? ::rel-id %) #(s/valid? ::rel+alias %)))
-
-(s/def :shelving.core/schema
-  (s/keys :req-un [:shelving.core.schema/type
-                   :shelving.core.schema/specs
-                   :shelving.core.schema/rels]))
-
-(s/def ::rel-id
-  (s/tuple ::spec-id ::spec-id))
 
 ;; Intentional interface for shelves
 ;;--------------------------------------------------------------------------------------------------
@@ -183,6 +149,27 @@
                   (recur queue* dirty?))))))
   id)
 
+(s/fdef put-spec
+   :args (s/or :3 (s/and
+                   (s/cat :conn ::specs/conn
+                          :spec ::specs/spec-id
+                          :val  any?)
+                   (fn [{:keys [spec val] :as conform}]
+                     (when (s/valid? spec val)
+                       conform)))
+               :4 (s/and
+                   (s/cat :conn ::specs/conn
+                          :spec ::specs/spec-id
+                          :id   uuid?
+                          :val  any?)
+                   (fn [{:keys [spec val] :as conform}]
+                     (when (s/valid? spec val)
+                       conform))
+                   (fn [{:keys [conn spec] :as conform}]
+                     (when (is-record? (schema conn) spec)
+                       conform))))
+   :ret ::specs/record-id)
+
 (defn put-spec
   "Destructuring put.
 
@@ -206,6 +193,16 @@
    (s/assert spec val)
    (assert (is-record? (schema conn) spec))
    (put* conn spec id val)))
+
+(s/fdef get-spec
+   :args (s/or :3 (s/cat :conn ::specs/conn
+                         :spec ::specs/spec-id
+                         :id ::specs/some-id)
+               :4 (s/cat :conn ::specs/conn
+                         :spec ::specs/spec-id
+                         :id ::specs/some-id
+                         :not-found any?))
+   :ret any?)
 
 ;; FIXME (arrdem 2018-03-04):
 ;;   figure out how to make this generic so that connections can leverage an object cache.
