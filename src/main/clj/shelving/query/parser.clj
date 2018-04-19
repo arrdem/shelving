@@ -89,8 +89,8 @@
 
 (s/def ::clause
   (s/or :tuple ::tuple
-        #_:guard #_::guard
-        #_:negation #_::negation))
+        :guard ::guard
+        :negation ::negation))
 
 (s/def ::clauses
   (s/alt :wrapped (s/coll-of ::clause :into [])
