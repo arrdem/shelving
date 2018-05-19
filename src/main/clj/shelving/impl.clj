@@ -307,7 +307,13 @@
   contain all lvars occurring in the query's `:find` clause.
 
   See the datalog documentation for a full description of the
-  supported query form."
+  supported query form.
+
+  By default, `#'shelving.query.core/q` is used which attempts to
+  compile queries against only the published `shelving.impl`
+  API. Implementers may choose to provide their own query compilation
+  pipelines but are warned that they do so wholesale. Query
+  compilation is currently not modular."
   {:categories #{:shelving.core/impl :shelving.core/query}
    :stability :stability/stable
    :added     "0.0.0"
