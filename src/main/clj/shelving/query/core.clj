@@ -73,8 +73,10 @@
                         (map (fn [[k {:keys [dependencies]
                                       :or   {dependencies #{}}}]]
                                [k dependencies]) %)
-                        (into (sorted-map-by #(as-> (compare (#'shelving.impl/count-spec conn %2)
-                                                             (#'shelving.impl/count-spec conn %1)) $
+                        (into (sorted-map-by #(as-> (compare (when conn
+                                                               (#'shelving.impl/count-spec conn %2))
+                                                             (when conn
+                                                               (#'shelving.impl/count-spec conn %1))) $
                                                 (if (= $ 0)
                                                   (compare %1 %2) $)))
                               %)

@@ -10,6 +10,12 @@
             [shelving.query.common :refer [lvar? spec?]]
             [clojure.tools.logging :as log]))
 
+(defn tmap
+  "Helper for fmapping through positive or negative tuple statements."
+  [f]
+  (fn [[tag tuple :as t]]
+    [tag (f tuple)]))
+
 (defn- put-spec!
   "Helper for ascribing types to lvars.
 
@@ -89,29 +95,25 @@
    :added      "0.0.0"}
   [{:keys [where depmap] :as query}]
   (let [depmap (volatile! depmap)
-        where* (mapv (fn [clause]
-                       (match [clause]
-                         [[:tuple [:inferred-rel [lhs (spec :guard spec?) rhs]]]]
-                         (do (when (lvar? lhs)
-                               ;; Ensure the lhs exists by ascribing it ::hole if it doesn't exist
-                               (vswap! depmap ascribe-spec! lhs ::hole))
+        where* (mapv (tmap
+                      (fn [tuple]
+                        (match tuple
+                          [:inferred-rel [lhs (spec :guard spec?) rhs]]
+                          (do (when (lvar? lhs)
+                                ;; Ensure the lhs exists by ascribing it ::hole if it doesn't exist
+                                (vswap! depmap ascribe-spec! lhs ::hole))
+                              
+                              (when (lvar? rhs)
+                                ;; Ascribe available spec information to rhs
+                                (vswap! depmap ascribe-spec! rhs spec))
+                              [lhs [::hole spec] rhs])
 
-                             (when (lvar? rhs)
-                               ;; Ascribe available spec information to rhs
-                               (vswap! depmap ascribe-spec! rhs spec))
-                             [lhs [::hole spec] rhs])
-
-                         [[:tuple [:explicit-rel [lhs ([fs ts] :as rel-id) rhs]]]]
-                         (do (when (lvar? lhs)
-                               (vswap! depmap ascribe-spec! lhs fs))
-                             (when (lvar? rhs)
-                               (vswap! depmap ascribe-spec! rhs ts))
-                             [lhs rel-id rhs])
-
-                         ;; FIXME (arrdem 2018-02-17):
-                         ;;   Only tuple clauses are supported at this time, if not and guard
-                         ;;   clauses get added, they'll need to be supported here.
-))
+                          [:explicit-rel [lhs ([fs ts] :as rel-id) rhs]]
+                          (do (when (lvar? lhs)
+                                (vswap! depmap ascribe-spec! lhs fs))
+                              (when (lvar? rhs)
+                                (vswap! depmap ascribe-spec! rhs ts))
+                              [lhs rel-id rhs]))))
                      where)]
     (assoc query
            :where where*
@@ -123,13 +125,14 @@
   {:stability  :stability/unstable
    :added      "0.0.0"}
   [{:keys [depmap where] :as query}]
-  (let [where* (mapv (fn [clause]
-                       (match clause
-                         [(lhs :guard lvar?) [::hole (to-spec :guard spec?)] rhs]
-                         [lhs [(-> (get depmap lhs) (get :spec ::hole)) to-spec] rhs]
+  (let [where* (mapv (tmap
+                      (fn fill* [tuple]
+                        (match tuple
+                          [(lhs :guard lvar?) [::hole (to-spec :guard spec?)] rhs]
+                          [lhs [(-> (get depmap lhs) (get :spec ::hole)) to-spec] rhs]
 
-                         [lhs [(fs :guard qualified-keyword?) (ts :guard qualified-keyword?)] rhs]
-                         [lhs [fs ts] rhs]))
+                          [lhs [(fs :guard qualified-keyword?) (ts :guard qualified-keyword?)] rhs]
+                          [lhs [fs ts] rhs])))
                      where)]
     (assoc query :where where*)))
 
@@ -153,18 +156,20 @@
   [{:keys [where] :as query} conn]
   (when conn
     (let [schema (impl/schema conn)]
-      (doseq [[lhs [from to :as rel] rhs :as clause] where]
-        (when-not (schema/has-spec? schema from)
-          (throw (ex-info (format "Clause '%s' makes use of unknown spec '%s'!"
-                                  clause from)
-                          {:schema schema
-                           :spec   from})))
-
-        (when-not (schema/has-spec? schema to)
-          (throw (ex-info (format "Clause '%s' makes use of unknown spec '%s'!"
-                                  clause to)
-                          {:schema schema
-                           :spec   to}))))))
+      (doseq [clause where]
+        (match clause
+          [_ [_ [(from :guard qualified-keyword?) (to :guard qualified-keyword?)] _]]
+          (do (when-not (schema/has-spec? schema from)
+                (throw (ex-info (format "Clause '%s' makes use of unknown spec '%s'!"
+                                        clause from)
+                                {:schema schema
+                                 :spec   from})))
+              
+              (when-not (schema/has-spec? schema to)
+                (throw (ex-info (format "Clause '%s' makes use of unknown spec '%s'!"
+                                        clause to)
+                                {:schema schema
+                                 :spec   to}))))))))
   query)
 
 (defn check-rels!
@@ -177,13 +182,22 @@
   [{:keys [where] :as query} conn]
   (when conn
     (let [schema (impl/schema conn)]
-      (doseq [[lhs rel rhs :as clause] where]
-        (when-not (schema/has-rel? schema rel)
-          (throw (ex-info (format "Clause '%s' makes use of unknown relation '%s!"
-                                  clause rel)
-                          {:schema schema
-                           :clause clause
-                           :rel    rel}))))))
+      (doseq [clause where]
+        (match clause
+          [_ [_ rel _]]
+          (do (when-not (schema/has-rel? schema rel)
+                (throw (ex-info (format "Clause '%s' makes use of unknown relation '%s!"
+                                        clause rel)
+                                {:schema schema
+                                 :clause clause
+                                 :rel    rel})))
+              
+              (when-not (schema/has-rel? schema rel)
+                (throw (ex-info (format "Clause '%s' makes use of unknown relation '%s!"
+                                        clause rel)
+                                {:schema schema
+                                 :clause clause
+                                 :rel    rel}))))))))
   query)
 
 (defn compile-dependency-map
@@ -199,13 +213,14 @@
   {:stability  :stability/unstable
    :added      "0.0.0"}
   [clauses]
-  (reduce (fn [acc [lhs [from to :as rel] rhs :as clause]]
-            {:pre [(lvar? lhs)]}
-            (cond-> acc
-              true        (update-in [lhs :clauses rel] (fnil conj #{}) clause)
-              true        (update-in [lhs :spec] put-spec! lhs from)
-              (lvar? rhs) (update-in [rhs :spec] put-spec! rhs to)
-              (lvar? rhs) (update-in [lhs :dependencies] (fnil conj #{}) rhs)))
+  (reduce (fn dep* [acc clause]
+            (match clause
+              [(:or :existance :non-existance) [lhs ([from to] :as rel) rhs]]
+              (cond-> acc
+                true        (update-in [lhs :clauses rel] (fnil conj #{}) clause)
+                true        (update-in [lhs :spec] put-spec! lhs from)
+                (lvar? rhs) (update-in [rhs :spec] put-spec! rhs to)
+                (lvar? rhs) (update-in [lhs :dependencies] (fnil conj #{}) rhs))))
           {} clauses))
 
 (defn annotate-dependees

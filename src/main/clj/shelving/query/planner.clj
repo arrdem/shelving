@@ -3,61 +3,101 @@
   {:authors ["Reid \"arrdem\" McKenzie <me@arrdem.com>"],
    :license "Eclipse Public License 1.0",
    :added   "0.0.0"}
-  (:require [shelving.impl :as impl]
+  (:require [clojure.core.match :refer [match]]
+            [shelving.impl :as impl]
             [shelving.schema :as schema]
             [shelving.query.common :refer [lvar?]]))
 
+(defn invert [[from to :as rel]]
+  {:pre [(vector? rel)
+         (qualified-keyword? from)
+         (qualified-keyword? to)
+         (= 2 (count rel))]}
+  [to from])
+
 (defn build-clause
   "Implementation detail of `#'build-plan`.
-  
+
   Given a connection, a single relation statement, the logic var it
   consumes (`from`) and the logic var it produces (`to`), emit a
   sequence of concrete scan or relational operators specifying how to
   produce the possibility space of the `to` logic variable."
   {:stability  :stability/unstable
    :added      "0.0.0"}
-  [conn [lhs [from-spec to-spec :as rel] rhs :as clause] from to]
-  (let [im1 (gensym "?q_")]
-    (cond (and from (not (lvar? rhs)))
-          ;; Project and join on a constant
-          [[im1
-            {:type ::scan-rel
-             :rel  [to-spec from-spec]
-             :id   (-> conn impl/schema (schema/id-for-record to-spec rhs))}]
-           [to
-            {:type  ::intersect
-             :left  from
-             :right im1}]]
+  [conn clause from to]
+  (match clause
+    [:existance [lhs ([from-spec to-spec] :as rel) rhs]]
+    (let [im1 (gensym "?e_")]
+      (cond (and from (not (lvar? rhs)))
+            ;; Project and join on a constant
+            [[im1
+              {:type ::scan-rel, :rel (invert rel),
+               :id (-> conn impl/schema (schema/id-for-record to-spec rhs))}]
+             [to
+              {:type  ::intersect, :left from, :right im1}]]
 
-          (and from (lvar? rhs))
-          ;; Project and join on another lvar
-          [[im1
-            {:type ::project
-             :rel  [to-spec from-spec]
-             :left rhs}]
-           [to
-            {:type  ::intersect
-             :left  from
-             :right im1}]]
+            (and from (lvar? rhs))
+            ;; Project and join on another lvar
+            [[im1
+              {:type ::project, :rel (invert rel), :left rhs}]
+             [to
+              {:type ::intersect, :left from, :right im1}]]
 
-          (and (not from) (not (lvar? rhs)))
-          ;; Creating an initial scan on a constant
-          [[to
-            {:type ::scan-rel
-             :rel  [to-spec from-spec]
-             :id   (-> conn impl/schema (schema/id-for-record to-spec rhs))}]]
+            (and (not from) (not (lvar? rhs)))
+            ;; Creating an initial scan on a constant
+            [[to
+              {:type ::scan-rel, :rel (invert rel),
+               :id (-> conn impl/schema (schema/id-for-record to-spec rhs))}]]
 
-          (and (not from) (lvar? rhs))
-          ;; Creating an initial scan on an lvar
-          ;; This is the case of a fully unconstrained logic variable.  Because we have topsort
-          ;; order, we know that the rhs has already been emitted, so we just project it.
-          [[to
-            {:type ::project
-             :rel  [to-spec from-spec]
-             :left rhs}]]
+            (and (not from) (lvar? rhs))
+            ;; Creating an initial scan on an lvar
+            ;;
+            ;; This is the case of a fully unconstrained logic variable.  Because we have topsort
+            ;; order, we know that the rhs has already been emitted, so we just project it.
+            [[to
+              {:type ::project, :rel (invert rel), :left rhs}]]
 
-          :else (throw (IllegalStateException.
-                        (format "Could not build an operation sequence for %s" (pr-str clause)))))))
+            :else (throw (IllegalStateException.
+                          (format "Could not build an operation sequence for %s" (pr-str clause))))))
+
+    [:non-existance [lhs ([from-spec to-spec] :as rel) rhs]]
+    ;; FIXME (arrdem 2018-05-19):
+    ;;
+    ;; It seems like this approach to non-existence leaves probably a lot on the table in large part
+    ;; because there's no way to signal termination UPSTREAM to the transducer stack - only
+    ;; downstream to the consumer. Maybe fundamentally this calls for a reworking of how I model
+    ;; queries - recursive chains of pulling functions / streams? Does that force any questions
+    ;; about how I currently manage state? I think most of that can stay the same...
+    ;;
+    ;; The core problem here is that "complements" as a stream operator needs to know when it sees
+    ;; the end of the upstream scan or join - currently that isn't part of the state model.
+    ;;
+    ;; In order to be efficient, we also want to be able to fuse scans (which isn't supported yet
+    ;; anyway) and to be able to terminate a given scan (which has consequences for fusion) when we
+    ;; locate a counter-example under negation.
+
+    ;; FIXME (arrdem 2018-05-19):
+    ;; 
+    ;;   Need to implement a stratification checker in order for negation to really be sane
+    (let [im1 (gensym "?ne_")]
+      (cond (and from (not (lvar? rhs)))
+            ;; LHS DOES NOT project to RHS for any value
+            [[im1
+              {:type ::scan-rel, :rel (invert rel)
+               :id (-> conn impl/schema (schema/id-for-record to-spec rhs))}]
+             [to
+              {:type ::complements, :left from, :right im1}]]
+
+            (and from (lvar? rhs))
+            ;; Disjoin on another lvar
+            [[im1
+              {:type ::project, :rel rel, :left rhs}]
+             [to
+              {:type ::complements, :left from, :right im1}]]
+
+            :else (throw (IllegalStateException.
+                          (format "Could not build an operation sequence for %s"
+                                  (pr-str clause))))))))
 
 (defn build-plan
   "Implementation detail.

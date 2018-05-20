@@ -65,7 +65,7 @@
 
 (s/def ::negation
   (s/and (s/cat :not #{:not}
-                :clause ::clause)
+                :clause ::tuple)
          (s/conformer
           (fn [{:keys [clause] :as o}]
             (if (= ::s/invalid o) o clause))
@@ -88,9 +88,9 @@
              :lvars lvars}))))
 
 (s/def ::clause
-  (s/or :tuple ::tuple
-        :guard ::guard
-        :negation ::negation))
+  (s/or :existance ::tuple
+        :non-existance ::negation
+        #_:guard #_::guard))
 
 (s/def ::clauses
   (s/alt :wrapped (s/coll-of ::clause :into [])
