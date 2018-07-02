@@ -105,12 +105,12 @@ Shelving, like SQL stores, has a notion of a schema.
 Schemas serve two purposes - to enumerate the `clojure.spec(.alpha)` structures which we expect to be able to serialize and deserialize, how they relate to each-other, and how we want to respond when serializing un-declared schemas and relations.
 
 A spec may be entered into a schema either as a "value" or a "record".
-[`#'shelving.core/value-spec`](/docs/schema.md#shelvingcorevalue-spec) enters a new spec into a schema, producing a new schema which will treat values of that spec as well values - that is they can be written once, read forever and updated never.
-[`#'shelving.core/record-spec`](/docs/schema.md#shelvingcorerecord-spec) is similar in that it enters a new spec into the schema, but record specs have update-in-place semantics.
+[`#'shelving.core/value-spec`](docs/schema.md#shelvingcorevalue-spec) enters a new spec into a schema, producing a new schema which will treat values of that spec as well values - that is they can be written once, read forever and updated never.
+[`#'shelving.core/record-spec`](docs/schema.md#shelvingcorerecord-spec) is similar in that it enters a new spec into the schema, but record specs have update-in-place semantics.
 They need not remain constant for all time.
 
 Schemas also describe the ways that specs relate to each other.
-[`#'shelving.core/spec-rel`](/docs/schema.md#shelvingcorespec-rel) enables us to update the schema by stating that we'll allow elements of one spec relate to those of another.
+[`#'shelving.core/spec-rel`](docs/schema.md#shelvingcorespec-rel) enables us to update the schema by stating that we'll allow elements of one spec relate to those of another.
 In our example after all, we want to be able to relate `::example` to all of `::foo`, `::bar` and `::baz`.
 
 So lets set up our shelf.
@@ -134,7 +134,7 @@ In fact, it isn't possible if we want to be able to leverage multi-specs.
 
 Schemas are immutable, but shelving stores support live schema extension.
 We can configure our schema to allow for dynamic extension both to new specs and to new records.
-[`#'shelving.core/automatic-specs`](/docs/schema.md#shelvingcoreautomatic-specs) and [`#'shelving.core/automatic-rels`](/docs/schema.md#shelvingcoreautomatic-rels) respectively direct Shelving to automatically perform a schema migration to add a spec or a rel when it is encountered the first time.
+[`#'shelving.core/automatic-specs`](docs/schema.md#shelvingcoreautomatic-specs) and [`#'shelving.core/automatic-rels`](docs/schema.md#shelvingcoreautomatic-rels) respectively direct Shelving to automatically perform a schema migration to add a spec or a rel when it is encountered the first time.
 
 ### Writing
 
